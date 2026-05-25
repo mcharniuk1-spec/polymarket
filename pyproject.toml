@@ -1,0 +1,9 @@
+[project]
+name = "sports-edge-research"
+version = "0.1.0"
+description = "Research-only sports odds and market-news analysis MVP"
+requires-python = ">=3.10"
+dependencies = ["vercel_blob==0.4.2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

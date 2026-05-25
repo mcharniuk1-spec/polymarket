@@ -1,0 +1,9 @@
+---
+description: Polymarket project routing and safety boundary
+alwaysApply: true
+---
+
+Read `AGENTS.md`, `docs/ai/PROJECT_GOAL.md`, and `docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md` before broad work.
+
+This repo is a research-only sports odds and market-news analysis MVP. Use historical backtesting and paper-trading only. Do not implement real-money betting, wallet actions, automated order execution, credential storage, or exchange trading execution.
+

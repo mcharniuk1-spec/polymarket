@@ -1,0 +1,9 @@
+---
+description: Polymarket vault routing
+alwaysApply: true
+---
+
+Use this vault for Polymarket durable memory and the repo at `/Users/getapple/Documents/Polymarket` for implementation.
+
+Keep the project research-only. Do not implement real-money betting, wallet actions, automated order execution, credential storage, or exchange trading execution.
+

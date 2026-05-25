@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Polymarket Multi-Agent Paper Console</title>
+    <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1><span>Polymarket Multi-Agent</span><span>Paper Console</span></h1>
+        <p>Public data gathering, category forecasts, and paper-only research metrics</p>
+      </div>
+      <div class="actions">
+        <select id="sourceMode" aria-label="Data source">
+          <option value="fixture">Fixture mode (default)</option>
+          <option value="live">Live public API</option>
+        </select>
+        <button id="refreshButton" type="button">Run Cycle</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="notice">
+        <strong>Paper-only safety boundary.</strong>
+        No wallet, credentials, order posting, or automated real-money betting is implemented.
+      </section>
+
+      <section class="portfolio-strip" aria-label="Portfolio status">
+        <div><span>Paper bankroll</span><strong id="stripBankroll">100.00</strong></div>
+        <div><span>Staked now</span><strong id="stripStaked">0.00</strong></div>
+        <div><span>Available</span><strong id="stripAvailable">0.00</strong></div>
+        <div><span>Paper bets</span><strong id="stripBets">0</strong></div>
+        <div><span>Monitoring</span><strong id="stripWatch">0</strong></div>
+        <p id="stripRule">Track timestamped public market data, model estimates, and research-only paper status.</p>
+      </section>
+
+      <section class="tabs" aria-label="Dashboard pages">
+        <button class="tab active" data-page="overview" type="button">Overview</button>
+        <button class="tab" data-page="bets" type="button">Current Bets</button>
+        <button class="tab" data-page="news" type="button">News</button>
+        <button class="tab" data-page="events" type="button">Events</button>
+        <button class="tab" data-page="intelligence" type="button">Intelligence</button>
+        <button class="tab" data-page="sports" type="button">Sports Odds</button>
+        <button class="tab" data-page="categories" type="button">Categories</button>
+        <button class="tab" data-page="details" type="button">Bet Detail</button>
+        <button class="tab" data-page="learning" type="button">Learning</button>
+        <button class="tab" data-page="agents" type="button">Agents</button>
+      </section>
+
+      <section id="overview" class="page active">
+        <div class="metric-grid">
+          <article class="metric"><span>Candidates</span><strong id="candidateCount">0</strong></article>
+          <article class="metric"><span>Tracked Markets</span><strong id="paperBetCount">0</strong></article>
+          <article class="metric"><span>Win Rate</span><strong id="winRate">0%</strong></article>
+          <article class="metric"><span>ROI</span><strong id="simulatedRoi">0%</strong></article>
+          <article class="metric"><span>Bankroll</span><strong id="bankroll">100</strong></article>
+          <article class="metric"><span>Staked</span><strong id="staked">0</strong></article>
+          <article class="metric"><span>Avg Odds</span><strong id="avgOdds">0.00</strong></article>
+          <article class="metric"><span>Brier</span><strong id="brierScore">0.000</strong></article>
+        </div>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Top Current Paper Bets</h2>
+              <span id="sourceNote"></span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Market</th>
+                    <th>Prob</th>
+                    <th>Price</th>
+                    <th>EV</th>
+                    <th>Risk</th>
+                    <th>Stake</th>
+                  </tr>
+                </thead>
+                <tbody id="topBetRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="panel">
+            <div class="panel-header">
+              <h2>Bankroll Curve</h2>
+              <span>paper-only research ledger</span>
+            </div>
+            <div id="bankrollCurve" class="mini-chart"></div>
+          </aside>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Best News Influencing Bets</h2>
+            <span>source-to-bet influence summary</span>
+          </div>
+          <div id="overviewNewsInfluence" class="news-mini-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Latest Intelligence Layer</h2>
+            <span id="intelligenceOverviewStatus">not loaded</span>
+          </div>
+          <div id="intelligenceOverview" class="intelligence-overview"></div>
+        </section>
+      </section>
+
+      <section id="bets" class="page">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Current Bet Book</h2>
+            <span id="placedSummary">0 coins</span>
+          </div>
+          <div id="betStateSummary" class="state-summary"></div>
+          <div id="placedBets" class="bet-list"></div>
+        </section>
+      </section>
+
+      <section id="news" class="page">
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>News Influence Graph</h2>
+              <span id="newsSummary">0 news nodes</span>
+            </div>
+            <div id="newsInfluenceList" class="news-grid"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Influence Links</h2>
+              <span>click a row to open the bet</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>News</th>
+                    <th>Dir</th>
+                    <th>Weight</th>
+                    <th>Motivation</th>
+                  </tr>
+                </thead>
+                <tbody id="newsEdgeRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="events" class="page">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Events And Sub-Bets</h2>
+            <span id="eventSummary">0 event groups</span>
+          </div>
+          <div id="eventGroups" class="event-list"></div>
+        </section>
+      </section>
+
+      <section id="intelligence" class="page">
+        <div class="metric-grid sports-metrics">
+          <article class="metric"><span>Last Run</span><strong id="intelLastRun">-</strong></article>
+          <article class="metric"><span>Status</span><strong id="intelStatus">-</strong></article>
+          <article class="metric"><span>Markets</span><strong id="intelMarkets">0</strong></article>
+          <article class="metric"><span>Avg Reliability</span><strong id="intelReliability">0%</strong></article>
+          <article class="metric"><span>Unusual Moves</span><strong id="intelMoves">0</strong></article>
+          <article class="metric"><span>Codex</span><strong id="intelCodex">off</strong></article>
+          <article class="metric"><span>Queue</span><strong id="intelQueue">0</strong></article>
+        </div>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Market Intelligence Signals</h2>
+              <span>movement, model forecast, interval, deviation</span>
+            </div>
+            <div id="intelligenceSignals" class="signal-list"></div>
+          </div>
+          <aside class="panel">
+            <div class="panel-header">
+              <h2>Source Reliability</h2>
+              <span>configured sources</span>
+            </div>
+            <div id="sourceReliabilityPanel" class="source-reliability"></div>
+          </aside>
+        </section>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Run History</h2>
+              <span>idempotent local cycles</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Run</th>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Markets</th>
+                    <th>Codex</th>
+                    <th>Queue</th>
+                  </tr>
+                </thead>
+                <tbody id="analysisRunRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Fallback State</h2>
+              <span>local auth boundary</span>
+            </div>
+            <div id="intelligenceFallback" class="fallback-box"></div>
+          </div>
+        </section>
+
+        <section class="layout">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Chronology</h2>
+              <span>sequential state</span>
+            </div>
+            <div id="chronologyPanel" class="fallback-box"></div>
+          </div>
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>ML Models</h2>
+              <span>online logistic health</span>
+            </div>
+            <div id="modelStatePanel" class="source-reliability"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Correlation Matrices</h2>
+            <span>related market context</span>
+          </div>
+          <div id="correlationPanel" class="correlation-panel"></div>
+        </section>
+      </section>
+
+      <section id="sports" class="page">
+        <div class="metric-grid sports-metrics">
+          <article class="metric"><span>Forecasts</span><strong id="sportsForecastCount">0</strong></article>
+          <article class="metric"><span>Paper Trades</span><strong id="sportsPaperTradeCount">0</strong></article>
+          <article class="metric"><span>Win Rate</span><strong id="sportsWinRate">0%</strong></article>
+          <article class="metric"><span>Sim ROI</span><strong id="sportsRoi">0%</strong></article>
+          <article class="metric"><span>Drawdown</span><strong id="sportsDrawdown">0%</strong></article>
+          <article class="metric"><span>Brier</span><strong id="sportsBrier">0.000</strong></article>
+        </div>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Sports Forecasts, Confidence, and EV</h2>
+              <span>historical fixture backtest</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Event</th>
+                    <th>Selection</th>
+                    <th>Odds</th>
+                    <th>Fair Prob</th>
+                    <th>Confidence</th>
+                    <th>EV</th>
+                    <th>Decision</th>
+                  </tr>
+                </thead>
+                <tbody id="sportsForecastRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="panel">
+            <div class="panel-header">
+              <h2>Paper Trading Decisions</h2>
+              <span id="sportsTradeSummary">0 units</span>
+            </div>
+            <div id="sportsTradeList" class="sports-trade-list"></div>
+          </aside>
+        </section>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Odds History</h2>
+              <span>open, estimate, expected resolution</span>
+            </div>
+            <div id="sportsOddsHistory" class="sports-history"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Calibration</h2>
+              <span>settled paper records</span>
+            </div>
+            <div id="sportsCalibration" class="calibration"></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="categories" class="page">
+        <div id="categoryCards" class="category-grid"></div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>All Current Bets And Watchlist</h2>
+            <span>filter by category</span>
+          </div>
+          <div id="categoryFilters" class="filter-row"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Market</th>
+                  <th>Decision</th>
+                  <th>Prob</th>
+                  <th>EV</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="allBetRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="details" class="page">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Bet Detail</h2>
+            <select id="detailPicker" aria-label="Select bet"></select>
+          </div>
+          <div id="betDetail" class="detail-grid"></div>
+        </section>
+      </section>
+
+      <section id="learning" class="page">
+        <section class="layout">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Calibration</h2>
+              <span>settled tracked candidates</span>
+            </div>
+            <div id="calibration" class="calibration"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Mistake Reviews</h2>
+              <span>loss attribution</span>
+            </div>
+            <div id="mistakes" class="bet-list"></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="agents" class="page">
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Agent Performance</h2>
+              <span>forecast quality by role</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Score</th>
+                    <th>Brier</th>
+                    <th>Confidence</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="agentRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Legacy Sports Fixture</h2>
+              <span>compatibility report</span>
+            </div>
+            <pre id="reportText"></pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

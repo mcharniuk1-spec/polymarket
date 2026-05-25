@@ -1,0 +1,134 @@
+[
+  {
+    "category": "polymarket",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Polymarket Gamma API",
+    "notes": "Official public read-only market metadata and discovery surface.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://gamma-api.polymarket.com/markets"
+  },
+  {
+    "category": "polymarket",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Polymarket CLOB API",
+    "notes": "Official public order book, spread, and price-history surface. No signing or order posting.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://clob.polymarket.com/"
+  },
+  {
+    "category": "polymarket",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Polymarket Data API",
+    "notes": "Official public activity, trade, volume, and participation data where exposed.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://data-api.polymarket.com/"
+  },
+  {
+    "category": "global",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "GDELT Cloud",
+    "notes": "Broad public news/event search. Corroborate settlement-critical claims with primary sources.",
+    "reliability_tier": 2,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://docs.gdeltcloud.com/api-reference"
+  },
+  {
+    "category": "global",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Official Press And RSS Feeds",
+    "notes": "Official publisher feeds and primary institutional releases where available.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://www.usa.gov/agency-index"
+  },
+  {
+    "category": "geopolitics",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "ReliefWeb",
+    "notes": "Humanitarian primary/official context for conflict and crisis markets.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://apidoc.reliefweb.int/"
+  },
+  {
+    "category": "geopolitics",
+    "enabled": false,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "ACLED",
+    "notes": "Recognized event-data provider; live API access requires access review.",
+    "reliability_tier": 2,
+    "status": "configured_disabled",
+    "update_frequency": "daily",
+    "url": "https://acleddata.com/acled-api-documentation"
+  },
+  {
+    "category": "crypto",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Binance Public Market Data",
+    "notes": "Public exchange market data only. No account or trading endpoints.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints"
+  },
+  {
+    "category": "macro",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "FRED",
+    "notes": "Official Federal Reserve economic time series source.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://fred.stlouisfed.org/docs/api/fred/"
+  },
+  {
+    "category": "weather",
+    "enabled": true,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "NWS API",
+    "notes": "Official US National Weather Service public API.",
+    "reliability_tier": 1,
+    "status": "configured_enabled",
+    "update_frequency": "15m",
+    "url": "https://www.weather.gov/documentation/services-web-api"
+  },
+  {
+    "category": "culture",
+    "enabled": false,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "TMDb",
+    "notes": "Structured entertainment metadata. Requires API key before live use.",
+    "reliability_tier": 2,
+    "status": "configured_disabled",
+    "update_frequency": "15m",
+    "url": "https://developer.themoviedb.org/docs/getting-started"
+  },
+  {
+    "category": "global",
+    "enabled": false,
+    "fetchedTime": "2026-05-25T15:55:12Z",
+    "name": "Social And Community Signals",
+    "notes": "Weak/noisy signal class. Never use as the only basis for a strong conclusion.",
+    "reliability_tier": 3,
+    "status": "configured_disabled",
+    "update_frequency": "manual",
+    "url": ""
+  }
+]

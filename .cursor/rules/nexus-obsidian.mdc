@@ -1,0 +1,11 @@
+---
+description: Nexus and Obsidian workflow
+alwaysApply: true
+---
+
+Use the repo-local `nexus` MCP server for live Obsidian operations only after inspecting tool schemas with `toolManager_getTools`.
+
+If Nexus does not respond, record a GAP and use filesystem-backed notes under `docs/ai/` until the live runtime is available.
+
+Never store API keys, tokens, cookies, passwords, private credentials, or raw secret values in Obsidian, Graphify, MCP config, logs, or repo docs.
+

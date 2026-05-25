@@ -1,0 +1,17 @@
+team,league,rating,recent_form,offense,defense,injury_penalty,rest_advantage
+Boston,NBA,70,0.72,7.8,3.0,0.4,1.0
+Miami,NBA,60,0.48,5.9,4.2,1.8,-0.4
+Denver,NBA,67,0.58,7.0,3.4,0.8,-1.2
+Phoenix,NBA,64,0.63,7.5,4.0,0.6,0.6
+San Francisco,NFL,76,0.70,8.1,2.8,0.7,0.4
+Seattle,NFL,59,0.42,5.8,5.0,2.0,-0.2
+Dallas,NFL,69,0.66,7.3,3.5,0.5,0.5
+Philadelphia,NFL,65,0.52,6.8,4.4,1.5,-0.1
+New York Rangers,NHL,63,0.55,6.6,3.8,1.0,0.0
+New Jersey,NHL,62,0.60,6.8,4.2,0.4,0.3
+Edmonton,NHL,68,0.69,7.9,4.1,0.6,0.2
+Calgary,NHL,58,0.46,5.7,4.8,0.8,-0.2
+Atlanta,MLB,70,0.64,7.6,3.9,0.4,0.3
+Philadelphia,MLB,63,0.50,6.6,4.5,1.1,-0.2
+Los Angeles Dodgers,MLB,72,0.62,7.7,3.7,1.4,-0.4
+San Diego,MLB,61,0.57,6.3,4.2,0.6,0.5

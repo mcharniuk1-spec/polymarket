@@ -1,0 +1,94 @@
+[
+  {
+    "codexQueuePendingCount": 5,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-25T15:55:12Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-e19fea9275",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "codexQueuePendingCount": 4,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-25T15:40:00Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-e8e50624b3",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "codexQueuePendingCount": 3,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-25T12:58:50Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-226bfcb4c4",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "codexQueuePendingCount": 2,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-25T12:54:54Z",
+    "cycleType": "manual",
+    "id": "intel-226d853028",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "codexQueuePendingCount": 0,
+    "codexQueueStatus": "disabled",
+    "createdAt": "2026-05-25T12:54:46Z",
+    "cycleType": "manual",
+    "id": "intel-6bb24a9c31",
+    "localCodexStatus": "skipped",
+    "marketCount": 6,
+    "status": "success"
+  },
+  {
+    "codexQueuePendingCount": 1,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-25T12:54:41Z",
+    "cycleType": "manual",
+    "id": "intel-f701994021",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "createdAt": "2026-05-25T11:39:35Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-c47c642f97",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "createdAt": "2026-05-25T11:39:26Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-afe01f01b7",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "createdAt": "2026-05-25T11:35:50Z",
+    "cycleType": "manual",
+    "id": "intel-26d0444814",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
+    "createdAt": "2026-05-25T11:35:18Z",
+    "cycleType": "manual",
+    "id": "intel-7bebdcb395",
+    "localCodexStatus": "skipped",
+    "marketCount": 60,
+    "status": "success"
+  }
+]

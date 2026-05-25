@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "nexus": {
+      "command": "node",
+      "args": [
+        "/Users/getapple/Documents/Obsidian Project Vaults/Polymarket/.obsidian/plugins/nexus/connector.js"
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+graphify-out/.graphify_*
+graphify-out/.rebuild.lock
+graphify-out/cache/
+graphify-out/memory/
+__pycache__/
+*.py[cod]
+.DS_Store
+.vercel
+.playwright-mcp/
+data/generated/intelligence/codex_queue/
+data/generated/production_state/

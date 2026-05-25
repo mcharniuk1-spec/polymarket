@@ -1,0 +1,10 @@
+Run the Polymarket chronological agent analysis workflow.
+
+Repository: /Users/getapple/Documents/Polymarket
+Instruction file: docs/ai/automations/run-agents-instructions.md
+
+Process all unprocessed Polymarket collection runs in chronological order. For every market and paper bet, use only data and news available at or before the collection/decision timestamp. Build or update the decision history for each agent: ideas, assessments, news/context read, decision, later result if known, and learning notes.
+
+If there are no new runs, output: OK - no new chronological runs; dashboard state unchanged.
+
+Do not place bets, do not touch wallets, do not store credentials, and do not execute orders.

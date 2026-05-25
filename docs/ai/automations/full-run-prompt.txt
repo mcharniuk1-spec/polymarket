@@ -1,0 +1,8 @@
+Run the full Polymarket managed research cycle.
+
+Repository: /Users/getapple/Documents/Polymarket
+Instruction file: docs/ai/automations/full-run-instructions.md
+
+First run chronological agent analysis. Then run ML and correlation updates. Then refresh dashboard-ready state. Preserve strict timestamp order and never use future information for past decisions. If no new data exists, output OK with the current latest run id and dashboard status.
+
+Do not place bets, do not touch wallets, do not store credentials, and do not execute orders.

@@ -1,0 +1,17 @@
+event_id,published_at,target_team,source,headline,sentiment,impact_score,tags
+NBA-2024-001,2024-02-29T12:00:00Z,Boston,fixture-wire,Boston starter cleared after ankle scare,0.62,0.70,injury
+NBA-2024-001,2024-02-29T13:30:00Z,Miami,fixture-wire,Miami rotation still thin on second unit,-0.35,0.45,depth
+NBA-2024-002,2024-03-01T13:00:00Z,Phoenix,fixture-wire,Phoenix guard returns and minutes cap lifted,0.58,0.72,injury
+NBA-2024-002,2024-03-01T14:00:00Z,Denver,fixture-wire,Denver plays third game in four nights,-0.30,0.55,schedule
+NFL-2023-001,2023-12-09T14:00:00Z,San Francisco,fixture-wire,San Francisco pass rush grades remain elite,0.42,0.50,matchup
+NFL-2023-001,2023-12-09T15:30:00Z,Seattle,fixture-wire,Seattle offensive line depth remains a concern,-0.48,0.68,injury
+NFL-2023-002,2023-12-10T13:00:00Z,Dallas,fixture-wire,Dallas weather-adjusted passing efficiency trending up,0.38,0.60,form
+NFL-2023-002,2023-12-10T13:15:00Z,Philadelphia,fixture-wire,Philadelphia secondary injuries persist,-0.40,0.65,injury
+NHL-2024-001,2024-02-19T12:00:00Z,New Jersey,fixture-wire,New Jersey goaltender confirmed after morning skate,0.55,0.62,lineup
+NHL-2024-001,2024-02-19T12:30:00Z,New York Rangers,fixture-wire,Rangers top line limited in practice,-0.28,0.50,lineup
+NHL-2024-002,2024-02-20T11:30:00Z,Edmonton,fixture-wire,Edmonton power play matchup projects favorably,0.45,0.58,matchup
+NHL-2024-002,2024-02-20T12:10:00Z,Calgary,fixture-wire,Calgary penalty kill usage remains elevated,-0.24,0.40,matchup
+MLB-2023-001,2023-09-14T12:00:00Z,Philadelphia,fixture-wire,Philadelphia bullpen usage high after extra innings,-0.35,0.52,bullpen
+MLB-2023-001,2023-09-14T12:20:00Z,Atlanta,fixture-wire,Atlanta lineup returns two regular starters,0.34,0.45,lineup
+MLB-2023-002,2023-09-14T18:30:00Z,San Diego,fixture-wire,San Diego starter shows improved velocity trend,0.50,0.66,pitching
+MLB-2023-002,2023-09-14T19:00:00Z,Los Angeles Dodgers,fixture-wire,Dodgers rest two high-leverage relievers,-0.32,0.48,bullpen

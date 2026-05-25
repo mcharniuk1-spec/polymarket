@@ -1,0 +1,49 @@
+event_id,sport,league,event_date,home_team,away_team,market,selection,side,snapshot_time,american_odds,is_closing,winner
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Boston,home,2024-02-28T16:00:00Z,-150,false,Boston
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Miami,away,2024-02-28T16:00:00Z,130,false,Boston
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Boston,home,2024-02-29T16:00:00Z,-165,false,Boston
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Miami,away,2024-02-29T16:00:00Z,142,false,Boston
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Boston,home,2024-03-01T00:00:00Z,-172,true,Boston
+NBA-2024-001,basketball,NBA,2024-03-01T00:30:00Z,Boston,Miami,moneyline,Miami,away,2024-03-01T00:00:00Z,150,true,Boston
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Denver,home,2024-02-29T18:00:00Z,-120,false,Phoenix
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Phoenix,away,2024-02-29T18:00:00Z,104,false,Phoenix
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Denver,home,2024-03-01T18:00:00Z,-108,false,Phoenix
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Phoenix,away,2024-03-01T18:00:00Z,-102,false,Phoenix
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Denver,home,2024-03-02T01:30:00Z,-101,true,Phoenix
+NBA-2024-002,basketball,NBA,2024-03-02T02:00:00Z,Denver,Phoenix,moneyline,Phoenix,away,2024-03-02T01:30:00Z,-109,true,Phoenix
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,San Francisco,home,2023-12-08T15:00:00Z,-210,false,San Francisco
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,Seattle,away,2023-12-08T15:00:00Z,175,false,San Francisco
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,San Francisco,home,2023-12-09T18:00:00Z,-235,false,San Francisco
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,Seattle,away,2023-12-09T18:00:00Z,190,false,San Francisco
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,San Francisco,home,2023-12-10T21:00:00Z,-245,true,San Francisco
+NFL-2023-001,football,NFL,2023-12-10T21:25:00Z,San Francisco,Seattle,moneyline,Seattle,away,2023-12-10T21:00:00Z,205,true,San Francisco
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Dallas,home,2023-12-09T16:00:00Z,-115,false,Dallas
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Philadelphia,away,2023-12-09T16:00:00Z,-105,false,Dallas
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Dallas,home,2023-12-10T16:00:00Z,-132,false,Dallas
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Philadelphia,away,2023-12-10T16:00:00Z,112,false,Dallas
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Dallas,home,2023-12-11T00:50:00Z,-138,true,Dallas
+NFL-2023-002,football,NFL,2023-12-11T01:20:00Z,Dallas,Philadelphia,moneyline,Philadelphia,away,2023-12-11T00:50:00Z,118,true,Dallas
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New York Rangers,home,2024-02-18T17:00:00Z,-125,false,New Jersey
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New Jersey,away,2024-02-18T17:00:00Z,108,false,New Jersey
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New York Rangers,home,2024-02-19T17:00:00Z,-118,false,New Jersey
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New Jersey,away,2024-02-19T17:00:00Z,102,false,New Jersey
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New York Rangers,home,2024-02-19T23:30:00Z,-110,true,New Jersey
+NHL-2024-001,hockey,NHL,2024-02-20T00:00:00Z,New York Rangers,New Jersey,moneyline,New Jersey,away,2024-02-19T23:30:00Z,-105,true,New Jersey
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Edmonton,home,2024-02-19T18:00:00Z,-145,false,Edmonton
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Calgary,away,2024-02-19T18:00:00Z,125,false,Edmonton
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Edmonton,home,2024-02-20T18:00:00Z,-160,false,Edmonton
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Calgary,away,2024-02-20T18:00:00Z,138,false,Edmonton
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Edmonton,home,2024-02-21T02:00:00Z,-168,true,Edmonton
+NHL-2024-002,hockey,NHL,2024-02-21T02:30:00Z,Edmonton,Calgary,moneyline,Calgary,away,2024-02-21T02:00:00Z,145,true,Edmonton
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Atlanta,home,2023-09-13T14:00:00Z,-135,false,Atlanta
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Philadelphia,away,2023-09-13T14:00:00Z,115,false,Atlanta
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Atlanta,home,2023-09-14T14:00:00Z,-122,false,Atlanta
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Philadelphia,away,2023-09-14T14:00:00Z,106,false,Atlanta
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Atlanta,home,2023-09-14T22:35:00Z,-118,true,Atlanta
+MLB-2023-001,baseball,MLB,2023-09-14T23:05:00Z,Atlanta,Philadelphia,moneyline,Philadelphia,away,2023-09-14T22:35:00Z,102,true,Atlanta
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,Los Angeles Dodgers,home,2023-09-14T12:00:00Z,-170,false,San Diego
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,San Diego,away,2023-09-14T12:00:00Z,148,false,San Diego
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,Los Angeles Dodgers,home,2023-09-14T20:00:00Z,-158,false,San Diego
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,San Diego,away,2023-09-14T20:00:00Z,137,false,San Diego
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,Los Angeles Dodgers,home,2023-09-15T01:40:00Z,-150,true,San Diego
+MLB-2023-002,baseball,MLB,2023-09-15T02:10:00Z,Los Angeles Dodgers,San Diego,moneyline,San Diego,away,2023-09-15T01:40:00Z,130,true,San Diego

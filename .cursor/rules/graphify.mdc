@@ -1,0 +1,9 @@
+---
+description: Graphify usage for this repo
+alwaysApply: true
+---
+
+If `graphify-out/graph.json` exists, use `graphify query`, `graphify explain`, or `graphify path` before broad file reads.
+
+Treat `graphify-out/` as generated structural reference. Write human conclusions to WikiLLM/Obsidian or repo-local `docs/ai/` notes, not by hand-editing raw graph JSON.
+

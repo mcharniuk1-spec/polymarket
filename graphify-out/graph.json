@@ -1,0 +1,1622 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": ".mcp.json",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "id": "mcp_json",
+      "community": 3,
+      "norm_label": ".mcp.json"
+    },
+    {
+      "label": "mcpServers",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L2",
+      "id": "polymarket_mcp_mcpservers",
+      "community": 3,
+      "norm_label": "mcpservers"
+    },
+    {
+      "label": "nexus",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L3",
+      "id": "polymarket_mcp_mcpservers_nexus",
+      "community": 3,
+      "norm_label": "nexus"
+    },
+    {
+      "label": "command",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L4",
+      "id": "polymarket_mcp_nexus_command",
+      "community": 3,
+      "norm_label": "command"
+    },
+    {
+      "label": "args",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L5",
+      "id": "polymarket_mcp_nexus_args",
+      "community": 3,
+      "norm_label": "args"
+    },
+    {
+      "label": "mcp.json",
+      "file_type": "code",
+      "source_file": ".cursor/mcp.json",
+      "source_location": "L1",
+      "id": "cursor_mcp_json",
+      "community": 2,
+      "norm_label": "mcp.json"
+    },
+    {
+      "label": "mcpServers",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L2",
+      "id": "cursor_mcp_mcpservers",
+      "community": 2,
+      "norm_label": "mcpservers"
+    },
+    {
+      "label": "nexus",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L3",
+      "id": "cursor_mcp_mcpservers_nexus",
+      "community": 2,
+      "norm_label": "nexus"
+    },
+    {
+      "label": "command",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L4",
+      "id": "cursor_mcp_nexus_command",
+      "community": 2,
+      "norm_label": "command"
+    },
+    {
+      "label": "args",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L5",
+      "id": "cursor_mcp_nexus_args",
+      "community": 2,
+      "norm_label": "args"
+    },
+    {
+      "label": ".mcp.json",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_mcp_json",
+      "community": 14,
+      "norm_label": ".mcp.json"
+    },
+    {
+      "label": "mcpServers",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L2",
+      "id": "obsidian_vault_mcp_mcpservers",
+      "community": 14,
+      "norm_label": "mcpservers"
+    },
+    {
+      "label": "nexus",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L3",
+      "id": "obsidian_vault_mcp_mcpservers_nexus",
+      "community": 14,
+      "norm_label": "nexus"
+    },
+    {
+      "label": "command",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L4",
+      "id": "obsidian_vault_mcp_nexus_command",
+      "community": 14,
+      "norm_label": "command"
+    },
+    {
+      "label": "args",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L5",
+      "id": "obsidian_vault_mcp_nexus_args",
+      "community": 14,
+      "norm_label": "args"
+    },
+    {
+      "label": "mcp.json",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_cursor_mcp_json",
+      "community": 2,
+      "norm_label": "mcp.json"
+    },
+    {
+      "label": "community-plugins.json",
+      "file_type": "code",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.obsidian/community-plugins.json",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_obsidian_community_plugins_json",
+      "community": 24,
+      "norm_label": "community-plugins.json"
+    },
+    {
+      "label": "verify_ai_stack.sh",
+      "file_type": "code",
+      "source_file": "scripts/verify_ai_stack.sh",
+      "source_location": "L1",
+      "id": "scripts_verify_ai_stack_sh",
+      "community": 7,
+      "norm_label": "verify_ai_stack.sh"
+    },
+    {
+      "label": "AGENTS.md",
+      "file_type": "document",
+      "source_file": "AGENTS.md",
+      "source_location": "L1",
+      "id": "agents_md",
+      "community": 4,
+      "norm_label": "agents.md"
+    },
+    {
+      "label": "Polymarket Agent Contract",
+      "file_type": "document",
+      "source_file": "AGENTS.md",
+      "source_location": "L1",
+      "id": "polymarket_agents_polymarket_agent_contract",
+      "community": 4,
+      "norm_label": "polymarket agent contract"
+    },
+    {
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "id": "claude_md",
+      "community": 5,
+      "norm_label": "claude.md"
+    },
+    {
+      "label": "Polymarket Agent Contract",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "id": "polymarket_claude_polymarket_agent_contract",
+      "community": 5,
+      "norm_label": "polymarket agent contract"
+    },
+    {
+      "label": "NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L1",
+      "id": "docs_ai_nexus_obsidian_graphify_md",
+      "community": 0,
+      "norm_label": "nexus_obsidian_graphify.md"
+    },
+    {
+      "label": "Polymarket Nexus Obsidian Graphify Setup",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L11",
+      "id": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "community": 0,
+      "norm_label": "polymarket nexus obsidian graphify setup"
+    },
+    {
+      "label": "Identity",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L13",
+      "id": "ai_nexus_obsidian_graphify_identity",
+      "community": 0,
+      "norm_label": "identity"
+    },
+    {
+      "label": "Required Routing",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L21",
+      "id": "ai_nexus_obsidian_graphify_required_routing",
+      "community": 0,
+      "norm_label": "required routing"
+    },
+    {
+      "label": "Nexus",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L32",
+      "id": "ai_nexus_obsidian_graphify_nexus",
+      "community": 0,
+      "norm_label": "nexus"
+    },
+    {
+      "label": "Graphify",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L46",
+      "id": "ai_nexus_obsidian_graphify_graphify",
+      "community": 0,
+      "norm_label": "graphify"
+    },
+    {
+      "label": "code:bash (graphify update .)",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L52",
+      "id": "ai_nexus_obsidian_graphify_codeblock_1",
+      "community": 0,
+      "norm_label": "code:bash (graphify update .)"
+    },
+    {
+      "label": "Obsidian And WikiLLM",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L60",
+      "id": "ai_nexus_obsidian_graphify_obsidian_and_wikillm",
+      "community": 0,
+      "norm_label": "obsidian and wikillm"
+    },
+    {
+      "label": "Safety Rules",
+      "file_type": "document",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L70",
+      "id": "ai_nexus_obsidian_graphify_safety_rules",
+      "community": 0,
+      "norm_label": "safety rules"
+    },
+    {
+      "label": "PROJECT_GOAL.md",
+      "file_type": "document",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L1",
+      "id": "docs_ai_project_goal_md",
+      "community": 1,
+      "norm_label": "project_goal.md"
+    },
+    {
+      "label": "Polymarket Project Goal",
+      "file_type": "document",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L9",
+      "id": "ai_project_goal_polymarket_project_goal",
+      "community": 1,
+      "norm_label": "polymarket project goal"
+    },
+    {
+      "label": "Scope",
+      "file_type": "document",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L13",
+      "id": "ai_project_goal_scope",
+      "community": 1,
+      "norm_label": "scope"
+    },
+    {
+      "label": "Safety Boundary",
+      "file_type": "document",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L23",
+      "id": "ai_project_goal_safety_boundary",
+      "community": 1,
+      "norm_label": "safety boundary"
+    },
+    {
+      "label": "Done Criteria",
+      "file_type": "document",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L35",
+      "id": "ai_project_goal_done_criteria",
+      "community": 1,
+      "norm_label": "done criteria"
+    },
+    {
+      "label": "CRITICAL_FACTS.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CRITICAL_FACTS.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_critical_facts_md",
+      "community": 20,
+      "norm_label": "critical_facts.md"
+    },
+    {
+      "label": "Critical Facts",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CRITICAL_FACTS.md",
+      "source_location": "L8",
+      "id": "obsidian_vault_critical_facts_critical_facts",
+      "community": 20,
+      "norm_label": "critical facts"
+    },
+    {
+      "label": "00_Vault_Index.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_00_vault_index_md",
+      "community": 13,
+      "norm_label": "00_vault_index.md"
+    },
+    {
+      "label": "Polymarket Vault Index",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L8",
+      "id": "obsidian_vault_00_vault_index_polymarket_vault_index",
+      "community": 13,
+      "norm_label": "polymarket vault index"
+    },
+    {
+      "label": "Start Here",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L16",
+      "id": "obsidian_vault_00_vault_index_start_here",
+      "community": 13,
+      "norm_label": "start here"
+    },
+    {
+      "label": "Repo",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L23",
+      "id": "obsidian_vault_00_vault_index_repo",
+      "community": 13,
+      "norm_label": "repo"
+    },
+    {
+      "label": "Graphify",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L27",
+      "id": "obsidian_vault_00_vault_index_graphify",
+      "community": 13,
+      "norm_label": "graphify"
+    },
+    {
+      "label": "AGENTS.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/AGENTS.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_agents_md",
+      "community": 18,
+      "norm_label": "agents.md"
+    },
+    {
+      "label": "Polymarket Vault Agent Contract",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/AGENTS.md",
+      "source_location": "L1",
+      "id": "obsidian_vault_agents_polymarket_vault_agent_contract",
+      "community": 18,
+      "norm_label": "polymarket vault agent contract"
+    },
+    {
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CLAUDE.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_claude_md",
+      "community": 19,
+      "norm_label": "claude.md"
+    },
+    {
+      "label": "Polymarket Vault Agent Contract",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CLAUDE.md",
+      "source_location": "L1",
+      "id": "obsidian_vault_claude_polymarket_vault_agent_contract",
+      "community": 19,
+      "norm_label": "polymarket vault agent contract"
+    },
+    {
+      "label": "00_Project_Context.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_wiki_projects_polymarket_00_project_context_md",
+      "community": 15,
+      "norm_label": "00_project_context.md"
+    },
+    {
+      "label": "Polymarket Project Context",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L8",
+      "id": "polymarket_00_project_context_polymarket_project_context",
+      "community": 15,
+      "norm_label": "polymarket project context"
+    },
+    {
+      "label": "Goal",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L10",
+      "id": "polymarket_00_project_context_goal",
+      "community": 15,
+      "norm_label": "goal"
+    },
+    {
+      "label": "Dashboard Outputs",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L14",
+      "id": "polymarket_00_project_context_dashboard_outputs",
+      "community": 15,
+      "norm_label": "dashboard outputs"
+    },
+    {
+      "label": "Boundary",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L26",
+      "id": "polymarket_00_project_context_boundary",
+      "community": 15,
+      "norm_label": "boundary"
+    },
+    {
+      "label": "2026052501_research_only_boundary.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_wiki_decisions_2026052501_research_only_boundary_md",
+      "community": 12,
+      "norm_label": "2026052501_research_only_boundary.md"
+    },
+    {
+      "label": "Decision: Research-Only Boundary",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L8",
+      "id": "decisions_2026052501_research_only_boundary_decision_research_only_boundary",
+      "community": 12,
+      "norm_label": "decision: research-only boundary"
+    },
+    {
+      "label": "Status",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L10",
+      "id": "decisions_2026052501_research_only_boundary_status",
+      "community": 12,
+      "norm_label": "status"
+    },
+    {
+      "label": "Decision",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L14",
+      "id": "decisions_2026052501_research_only_boundary_decision",
+      "community": 12,
+      "norm_label": "decision"
+    },
+    {
+      "label": "Out Of Scope",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L18",
+      "id": "decisions_2026052501_research_only_boundary_out_of_scope",
+      "community": 12,
+      "norm_label": "out of scope"
+    },
+    {
+      "label": "2026-05-25_bootstrap.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/logs/2026-05-25_bootstrap.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_obsidian_vault_wiki_logs_2026_05_25_bootstrap_md",
+      "community": 21,
+      "norm_label": "2026-05-25_bootstrap.md"
+    },
+    {
+      "label": "2026-05-25 Bootstrap",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/logs/2026-05-25_bootstrap.md",
+      "source_location": "L8",
+      "id": "logs_2026_05_25_bootstrap_2026_05_25_bootstrap",
+      "community": 21,
+      "norm_label": "2026-05-25 bootstrap"
+    },
+    {
+      "label": "insights.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/insights.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_insights_md",
+      "community": 17,
+      "norm_label": "insights.md"
+    },
+    {
+      "label": "Insights",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/insights.md",
+      "source_location": "L1",
+      "id": "polymarket_insights_insights",
+      "community": 17,
+      "norm_label": "insights"
+    },
+    {
+      "label": "Insight 1",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/insights.md",
+      "source_location": "L3",
+      "id": "polymarket_insights_insight_1",
+      "community": 17,
+      "norm_label": "insight 1"
+    },
+    {
+      "label": "log.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/log.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_log_md",
+      "community": 22,
+      "norm_label": "log.md"
+    },
+    {
+      "label": "Log",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/log.md",
+      "source_location": "L1",
+      "id": "polymarket_log_log",
+      "community": 22,
+      "norm_label": "log"
+    },
+    {
+      "label": "memory.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_memory_md",
+      "community": 16,
+      "norm_label": "memory.md"
+    },
+    {
+      "label": "Memory",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L1",
+      "id": "polymarket_memory_memory",
+      "community": 16,
+      "norm_label": "memory"
+    },
+    {
+      "label": "Pattern 1",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L3",
+      "id": "polymarket_memory_pattern_1",
+      "community": 16,
+      "norm_label": "pattern 1"
+    },
+    {
+      "label": "Pattern 2",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L11",
+      "id": "polymarket_memory_pattern_2",
+      "community": 16,
+      "norm_label": "pattern 2"
+    },
+    {
+      "label": "index.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_index_md",
+      "community": 10,
+      "norm_label": "index.md"
+    },
+    {
+      "label": "Polymarket",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L1",
+      "id": "polymarket_index_polymarket",
+      "community": 10,
+      "norm_label": "polymarket"
+    },
+    {
+      "label": "Project description",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L3",
+      "id": "polymarket_index_project_description",
+      "community": 10,
+      "norm_label": "project description"
+    },
+    {
+      "label": "Components",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L7",
+      "id": "polymarket_index_components",
+      "community": 10,
+      "norm_label": "components"
+    },
+    {
+      "label": "Current state",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L17",
+      "id": "polymarket_index_current_state",
+      "community": 10,
+      "norm_label": "current state"
+    },
+    {
+      "label": "Primary workspace evidence",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L27",
+      "id": "polymarket_index_primary_workspace_evidence",
+      "community": 10,
+      "norm_label": "primary workspace evidence"
+    },
+    {
+      "label": "rules.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/rules.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_rules_md",
+      "community": 23,
+      "norm_label": "rules.md"
+    },
+    {
+      "label": "Rules",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/rules.md",
+      "source_location": "L1",
+      "id": "polymarket_rules_rules",
+      "community": 23,
+      "norm_label": "rules"
+    },
+    {
+      "label": "2026052501_decision_research-only-paper-trading-boundary.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_decisions_2026052501_decision_research_only_paper_trading_boundary_md",
+      "community": 9,
+      "norm_label": "2026052501_decision_research-only-paper-trading-boundary.md"
+    },
+    {
+      "label": "Decision: research-only paper-trading boundary",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L1",
+      "id": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "community": 9,
+      "norm_label": "decision: research-only paper-trading boundary"
+    },
+    {
+      "label": "Status",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L3",
+      "id": "decisions_2026052501_decision_research_only_paper_trading_boundary_status",
+      "community": 9,
+      "norm_label": "status"
+    },
+    {
+      "label": "Decision",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L7",
+      "id": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision",
+      "community": 9,
+      "norm_label": "decision"
+    },
+    {
+      "label": "Why",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L13",
+      "id": "decisions_2026052501_decision_research_only_paper_trading_boundary_why",
+      "community": 9,
+      "norm_label": "why"
+    },
+    {
+      "label": "Consequences",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L17",
+      "id": "decisions_2026052501_decision_research_only_paper_trading_boundary_consequences",
+      "community": 9,
+      "norm_label": "consequences"
+    },
+    {
+      "label": "2026052501_issue_nexus-live-tool-call-timeout.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_issues_2026052501_issue_nexus_live_tool_call_timeout_md",
+      "community": 11,
+      "norm_label": "2026052501_issue_nexus-live-tool-call-timeout.md"
+    },
+    {
+      "label": "Issue: Nexus live tool call timed out",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L1",
+      "id": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "community": 11,
+      "norm_label": "issue: nexus live tool call timed out"
+    },
+    {
+      "label": "Status",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L3",
+      "id": "issues_2026052501_issue_nexus_live_tool_call_timeout_status",
+      "community": 11,
+      "norm_label": "status"
+    },
+    {
+      "label": "Problem",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L7",
+      "id": "issues_2026052501_issue_nexus_live_tool_call_timeout_problem",
+      "community": 11,
+      "norm_label": "problem"
+    },
+    {
+      "label": "Impact",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L15",
+      "id": "issues_2026052501_issue_nexus_live_tool_call_timeout_impact",
+      "community": 11,
+      "norm_label": "impact"
+    },
+    {
+      "label": "Next validation",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L19",
+      "id": "issues_2026052501_issue_nexus_live_tool_call_timeout_next_validation",
+      "community": 11,
+      "norm_label": "next validation"
+    },
+    {
+      "label": "2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L1",
+      "id": "docs_ai_vault_bootstrap_wikillm_polymarket_runs_2026052501_run_nexus_graphify_obsidian_bootstrap_md",
+      "community": 8,
+      "norm_label": "2026052501_run_nexus-graphify-obsidian-bootstrap.md"
+    },
+    {
+      "label": "Run: Nexus Graphify Obsidian Bootstrap",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L1",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "community": 8,
+      "norm_label": "run: nexus graphify obsidian bootstrap"
+    },
+    {
+      "label": "Task",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L3",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_task",
+      "community": 8,
+      "norm_label": "task"
+    },
+    {
+      "label": "Inputs",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L7",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_inputs",
+      "community": 8,
+      "norm_label": "inputs"
+    },
+    {
+      "label": "Outputs",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L14",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_outputs",
+      "community": 8,
+      "norm_label": "outputs"
+    },
+    {
+      "label": "Checks",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L22",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_checks",
+      "community": 8,
+      "norm_label": "checks"
+    },
+    {
+      "label": "Blockers",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L29",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_blockers",
+      "community": 8,
+      "norm_label": "blockers"
+    },
+    {
+      "label": "Next steps",
+      "file_type": "document",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L33",
+      "id": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_next_steps",
+      "community": 8,
+      "norm_label": "next steps"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "reference/graphify/polymarket/README.md",
+      "source_location": "L1",
+      "id": "reference_graphify_polymarket_readme_md",
+      "community": 6,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "Polymarket Graphify Reference",
+      "file_type": "document",
+      "source_file": "reference/graphify/polymarket/README.md",
+      "source_location": "L1",
+      "id": "polymarket_readme_polymarket_graphify_reference",
+      "community": 6,
+      "norm_label": "polymarket graphify reference"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".mcp.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "mcp_json",
+      "target": "polymarket_mcp_mcpservers"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".mcp.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "polymarket_mcp_mcpservers",
+      "target": "polymarket_mcp_mcpservers_nexus"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".mcp.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "polymarket_mcp_mcpservers_nexus",
+      "target": "polymarket_mcp_nexus_command"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".mcp.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "polymarket_mcp_mcpservers_nexus",
+      "target": "polymarket_mcp_nexus_args"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".cursor/mcp.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "cursor_mcp_json",
+      "target": "cursor_mcp_mcpservers"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".cursor/mcp.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "cursor_mcp_mcpservers",
+      "target": "cursor_mcp_mcpservers_nexus"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_cursor_mcp_json",
+      "target": "cursor_mcp_mcpservers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".cursor/mcp.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "cursor_mcp_mcpservers_nexus",
+      "target": "cursor_mcp_nexus_command"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".cursor/mcp.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "cursor_mcp_mcpservers_nexus",
+      "target": "cursor_mcp_nexus_args"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_mcp_json",
+      "target": "obsidian_vault_mcp_mcpservers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "obsidian_vault_mcp_mcpservers",
+      "target": "obsidian_vault_mcp_mcpservers_nexus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "obsidian_vault_mcp_mcpservers_nexus",
+      "target": "obsidian_vault_mcp_nexus_command",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/.mcp.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "obsidian_vault_mcp_mcpservers_nexus",
+      "target": "obsidian_vault_mcp_nexus_args",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AGENTS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agents_md",
+      "target": "polymarket_agents_polymarket_agent_contract"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_md",
+      "target": "polymarket_claude_polymarket_agent_contract"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "docs_ai_nexus_obsidian_graphify_md",
+      "target": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_identity"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_required_routing"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_nexus"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_graphify"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L60",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_obsidian_and_wikillm"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L70",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_polymarket_nexus_obsidian_graphify_setup",
+      "target": "ai_nexus_obsidian_graphify_safety_rules"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_nexus_obsidian_graphify_graphify",
+      "target": "ai_nexus_obsidian_graphify_codeblock_1"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "docs_ai_project_goal_md",
+      "target": "ai_project_goal_polymarket_project_goal"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_project_goal_polymarket_project_goal",
+      "target": "ai_project_goal_scope"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_project_goal_polymarket_project_goal",
+      "target": "ai_project_goal_safety_boundary"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/PROJECT_GOAL.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "ai_project_goal_polymarket_project_goal",
+      "target": "ai_project_goal_done_criteria"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CRITICAL_FACTS.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_critical_facts_md",
+      "target": "obsidian_vault_critical_facts_critical_facts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_00_vault_index_md",
+      "target": "obsidian_vault_00_vault_index_polymarket_vault_index",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "obsidian_vault_00_vault_index_polymarket_vault_index",
+      "target": "obsidian_vault_00_vault_index_start_here",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "obsidian_vault_00_vault_index_polymarket_vault_index",
+      "target": "obsidian_vault_00_vault_index_repo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "obsidian_vault_00_vault_index_polymarket_vault_index",
+      "target": "obsidian_vault_00_vault_index_graphify",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/AGENTS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_agents_md",
+      "target": "obsidian_vault_agents_polymarket_vault_agent_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/CLAUDE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_claude_md",
+      "target": "obsidian_vault_claude_polymarket_vault_agent_contract",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_wiki_projects_polymarket_00_project_context_md",
+      "target": "polymarket_00_project_context_polymarket_project_context",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "polymarket_00_project_context_polymarket_project_context",
+      "target": "polymarket_00_project_context_goal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "polymarket_00_project_context_polymarket_project_context",
+      "target": "polymarket_00_project_context_dashboard_outputs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "polymarket_00_project_context_polymarket_project_context",
+      "target": "polymarket_00_project_context_boundary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_wiki_decisions_2026052501_research_only_boundary_md",
+      "target": "decisions_2026052501_research_only_boundary_decision_research_only_boundary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "decisions_2026052501_research_only_boundary_decision_research_only_boundary",
+      "target": "decisions_2026052501_research_only_boundary_status",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "decisions_2026052501_research_only_boundary_decision_research_only_boundary",
+      "target": "decisions_2026052501_research_only_boundary_decision",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "decisions_2026052501_research_only_boundary_decision_research_only_boundary",
+      "target": "decisions_2026052501_research_only_boundary_out_of_scope",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/obsidian_vault/wiki/logs/2026-05-25_bootstrap.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_obsidian_vault_wiki_logs_2026_05_25_bootstrap_md",
+      "target": "logs_2026_05_25_bootstrap_2026_05_25_bootstrap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/insights.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_insights_md",
+      "target": "polymarket_insights_insights",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/insights.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "polymarket_insights_insights",
+      "target": "polymarket_insights_insight_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/log.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_log_md",
+      "target": "polymarket_log_log",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_memory_md",
+      "target": "polymarket_memory_memory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "polymarket_memory_memory",
+      "target": "polymarket_memory_pattern_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/memory.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "polymarket_memory_memory",
+      "target": "polymarket_memory_pattern_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_index_md",
+      "target": "polymarket_index_polymarket",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "polymarket_index_polymarket",
+      "target": "polymarket_index_project_description",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "polymarket_index_polymarket",
+      "target": "polymarket_index_components",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "polymarket_index_polymarket",
+      "target": "polymarket_index_current_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/index.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "polymarket_index_polymarket",
+      "target": "polymarket_index_primary_workspace_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/rules.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_rules_md",
+      "target": "polymarket_rules_rules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_decisions_2026052501_decision_research_only_paper_trading_boundary_md",
+      "target": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "target": "decisions_2026052501_decision_research_only_paper_trading_boundary_status",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "target": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "target": "decisions_2026052501_decision_research_only_paper_trading_boundary_why",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "decisions_2026052501_decision_research_only_paper_trading_boundary_decision_research_only_paper_trading_boundary",
+      "target": "decisions_2026052501_decision_research_only_paper_trading_boundary_consequences",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_issues_2026052501_issue_nexus_live_tool_call_timeout_md",
+      "target": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "target": "issues_2026052501_issue_nexus_live_tool_call_timeout_status",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "target": "issues_2026052501_issue_nexus_live_tool_call_timeout_problem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "target": "issues_2026052501_issue_nexus_live_tool_call_timeout_impact",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "issues_2026052501_issue_nexus_live_tool_call_timeout_issue_nexus_live_tool_call_timed_out",
+      "target": "issues_2026052501_issue_nexus_live_tool_call_timeout_next_validation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_ai_vault_bootstrap_wikillm_polymarket_runs_2026052501_run_nexus_graphify_obsidian_bootstrap_md",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_task",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_inputs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_outputs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_checks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_blockers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_run_nexus_graphify_obsidian_bootstrap",
+      "target": "runs_2026052501_run_nexus_graphify_obsidian_bootstrap_next_steps",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "reference/graphify/polymarket/README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "reference_graphify_polymarket_readme_md",
+      "target": "polymarket_readme_polymarket_graphify_reference"
+    }
+  ],
+  "hyperedges": []
+}

@@ -1,0 +1,110 @@
+[
+  {
+    "name": "Polymarket Gamma API",
+    "url": "https://gamma-api.polymarket.com/markets",
+    "category": "polymarket",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official public read-only market metadata and discovery surface.",
+    "enabled": true
+  },
+  {
+    "name": "Polymarket CLOB API",
+    "url": "https://clob.polymarket.com/",
+    "category": "polymarket",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official public order book, spread, and price-history surface. No signing or order posting.",
+    "enabled": true
+  },
+  {
+    "name": "Polymarket Data API",
+    "url": "https://data-api.polymarket.com/",
+    "category": "polymarket",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official public activity, trade, volume, and participation data where exposed.",
+    "enabled": true
+  },
+  {
+    "name": "GDELT Cloud",
+    "url": "https://docs.gdeltcloud.com/api-reference",
+    "category": "global",
+    "reliability_tier": 2,
+    "update_frequency": "15m",
+    "notes": "Broad public news/event search. Corroborate settlement-critical claims with primary sources.",
+    "enabled": true
+  },
+  {
+    "name": "Official Press And RSS Feeds",
+    "url": "https://www.usa.gov/agency-index",
+    "category": "global",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official publisher feeds and primary institutional releases where available.",
+    "enabled": true
+  },
+  {
+    "name": "ReliefWeb",
+    "url": "https://apidoc.reliefweb.int/",
+    "category": "geopolitics",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Humanitarian primary/official context for conflict and crisis markets.",
+    "enabled": true
+  },
+  {
+    "name": "ACLED",
+    "url": "https://acleddata.com/acled-api-documentation",
+    "category": "geopolitics",
+    "reliability_tier": 2,
+    "update_frequency": "daily",
+    "notes": "Recognized event-data provider; live API access requires access review.",
+    "enabled": false
+  },
+  {
+    "name": "Binance Public Market Data",
+    "url": "https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints",
+    "category": "crypto",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Public exchange market data only. No account or trading endpoints.",
+    "enabled": true
+  },
+  {
+    "name": "FRED",
+    "url": "https://fred.stlouisfed.org/docs/api/fred/",
+    "category": "macro",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official Federal Reserve economic time series source.",
+    "enabled": true
+  },
+  {
+    "name": "NWS API",
+    "url": "https://www.weather.gov/documentation/services-web-api",
+    "category": "weather",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official US National Weather Service public API.",
+    "enabled": true
+  },
+  {
+    "name": "TMDb",
+    "url": "https://developer.themoviedb.org/docs/getting-started",
+    "category": "culture",
+    "reliability_tier": 2,
+    "update_frequency": "15m",
+    "notes": "Structured entertainment metadata. Requires API key before live use.",
+    "enabled": false
+  },
+  {
+    "name": "Social And Community Signals",
+    "url": "",
+    "category": "global",
+    "reliability_tier": 3,
+    "update_frequency": "manual",
+    "notes": "Weak/noisy signal class. Never use as the only basis for a strong conclusion.",
+    "enabled": false
+  }
+]

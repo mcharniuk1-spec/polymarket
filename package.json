@@ -1,0 +1,17 @@
+{
+  "name": "polymarket-research-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "check:web": "node --check web/app.js",
+    "intelligence:once": "python3 scripts/run_intelligence_cycle.py --cycle-type manual",
+    "intelligence:watch": "python3 scripts/run_intelligence_cycle.py --watch --interval-seconds 900",
+    "intelligence:15m": "python3 scripts/run_intelligence_cycle.py --watch --interval-seconds 900 --cycle-type scheduled_15m",
+    "intelligence:queue": "python3 scripts/run_codex_queue.py --summary",
+    "intelligence:drain-codex-queue": "python3 scripts/run_codex_queue.py --limit 24",
+    "intelligence:codex-worker": "python3 scripts/run_codex_queue.py --watch --poll-seconds 60 --limit 12",
+    "managed:cycle": "python3 -m sports_edge.cli run-managed-cycle --source live --target-count 300",
+    "managed:agents": "python3 -m sports_edge.cli run-agent-replay",
+    "managed:ml": "python3 -m sports_edge.cli run-ml-update --global-review"
+  }
+}

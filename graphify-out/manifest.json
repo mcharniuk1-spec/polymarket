@@ -1,0 +1,132 @@
+{
+  "/Users/getapple/Documents/Polymarket/.mcp.json": {
+    "mtime": 1779697264.7202623,
+    "ast_hash": "172fca4fed907615fb39369a462e0c5d",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/.cursor/mcp.json": {
+    "mtime": 1779697264.7651963,
+    "ast_hash": "172fca4fed907615fb39369a462e0c5d",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/scripts/verify_ai_stack.sh": {
+    "mtime": 1779697264.996567,
+    "ast_hash": "e078d85a9f46acfb28e729df9b7dd61f",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/AGENTS.md": {
+    "mtime": 1779697264.5344121,
+    "ast_hash": "19a76e17f78d46bae8277a94db59e33f",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/CLAUDE.md": {
+    "mtime": 1779697264.581527,
+    "ast_hash": "fe34a3aedb865df80280becd125a18fb",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md": {
+    "mtime": 1779697264.6748493,
+    "ast_hash": "be8db9c7ef8d770e20b7312acf8c1170",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/PROJECT_GOAL.md": {
+    "mtime": 1779697264.6270847,
+    "ast_hash": "fe79046fbfc4c2e0fa0d52c351abc98f",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/reference/graphify/polymarket/README.md": {
+    "mtime": 1779697264.9487505,
+    "ast_hash": "8bc6b1a674f7cb94d9b527fe7743e4b9",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/.mcp.json": {
+    "mtime": 1779697397.9873915,
+    "ast_hash": "4090bd2d07d3db73086081bfff28c707",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/.cursor/mcp.json": {
+    "mtime": 1779697398.0356627,
+    "ast_hash": "4090bd2d07d3db73086081bfff28c707",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/.obsidian/community-plugins.json": {
+    "mtime": 1779697417.5007217,
+    "ast_hash": "3a04eaaab83268fcf2e3b3f7cea6936d",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/CRITICAL_FACTS.md": {
+    "mtime": 1779697397.7675846,
+    "ast_hash": "ee49b27c42430e7eaf399e4dcf72e519",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/00_Vault_Index.md": {
+    "mtime": 1779697397.718976,
+    "ast_hash": "e20b73b68b072042835201c2d5525a3e",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/AGENTS.md": {
+    "mtime": 1779697397.6243317,
+    "ast_hash": "6255a305735f75114d06f225896ae596",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/CLAUDE.md": {
+    "mtime": 1779697397.6715643,
+    "ast_hash": "1703876bf95dc23cfb8a862bcac44771",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/wiki/projects/Polymarket/00_Project_Context.md": {
+    "mtime": 1779697397.821846,
+    "ast_hash": "6a1f52a45b9b1c8ea741c80679dda692",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/wiki/decisions/2026052501_research_only_boundary.md": {
+    "mtime": 1779697397.8875268,
+    "ast_hash": "eddd739538febb8d4575484f23573403",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/obsidian_vault/wiki/logs/2026-05-25_bootstrap.md": {
+    "mtime": 1779697397.9380748,
+    "ast_hash": "036b9243a7af9230d412b76238bc460b",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/insights.md": {
+    "mtime": 1779697397.3634813,
+    "ast_hash": "55d41923399a44f3c45e70e07574ef44",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/log.md": {
+    "mtime": 1779697397.4519215,
+    "ast_hash": "7a2250bcea7d828c85acca825d493d84",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/memory.md": {
+    "mtime": 1779697397.319313,
+    "ast_hash": "1f76493673be862253f51fc970fd5640",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/index.md": {
+    "mtime": 1779697397.2712424,
+    "ast_hash": "34cba14d3f5adf7fea3c1393b210e6f4",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/rules.md": {
+    "mtime": 1779697397.4066336,
+    "ast_hash": "a27f5342c954b94c5988c91c6667a1b6",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/decisions/2026052501_decision_research-only-paper-trading-boundary.md": {
+    "mtime": 1779697397.5808165,
+    "ast_hash": "ab25e9e5c3035bfd1e477aa6b719874a",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/issues/2026052501_issue_nexus-live-tool-call-timeout.md": {
+    "mtime": 1779697397.5386057,
+    "ast_hash": "39105e66deaedfa2b24cb2e3bd5209cc",
+    "semantic_hash": ""
+  },
+  "/Users/getapple/Documents/Polymarket/docs/ai/vault_bootstrap/wikillm/polymarket/runs/2026052501_run_nexus-graphify-obsidian-bootstrap.md": {
+    "mtime": 1779697397.4960308,
+    "ast_hash": "cf1596dc67e63503ad4b4591f652974b",
+    "semantic_hash": ""
+  }
+}
