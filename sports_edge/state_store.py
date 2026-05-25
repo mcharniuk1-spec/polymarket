@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
@@ -19,7 +21,7 @@ class JsonStateStore:
         self.local_root = Path(local_root)
         self.prefix = (prefix or os.environ.get("POLYMARKET_STATE_PREFIX") or DEFAULT_PREFIX).strip("/")
         self.token = os.environ.get("BLOB_READ_WRITE_TOKEN")
-        self.local_enabled = not os.environ.get("VERCEL")
+        self.local_enabled = not (os.environ.get("VERCEL") or str(REPO_ROOT).startswith("/var/task"))
         self.storage_mode = "vercel_blob" if self.token else "local_file"
 
     def read_json(self, key: str, default: Any = None) -> Any:
@@ -69,12 +71,16 @@ class JsonStateStore:
 
     def _write_blob(self, key: str, encoded: bytes) -> dict[str, Any]:
         try:
-            import vercel_blob  # type: ignore
-
-            response = vercel_blob.put(
-                self._blob_path(key),
-                encoded,
-                {"addRandomSuffix": "false", "contentType": "application/json"},
+            response = self._blob_api_request(
+                "PUT",
+                f"/?{urlencode({'pathname': self._blob_path(key)})}",
+                body=encoded,
+                extra_headers={
+                    "x-vercel-blob-access": "private",
+                    "x-add-random-suffix": "0",
+                    "x-allow-overwrite": "1",
+                    "x-content-type": "application/json",
+                },
             )
             return {
                 "storageMode": "vercel_blob",
@@ -92,9 +98,10 @@ class JsonStateStore:
 
     def _read_blob_json(self, key: str) -> Any | None:
         try:
-            import vercel_blob  # type: ignore
-
-            listing = vercel_blob.list({"prefix": self._blob_path(key), "limit": "10"})
+            listing = self._blob_api_request(
+                "GET",
+                f"?{urlencode({'prefix': self._blob_path(key), 'limit': '10'})}",
+            )
             blobs = listing.get("blobs", []) if isinstance(listing, dict) else []
             exact = [row for row in blobs if row.get("pathname") == self._blob_path(key)]
             if not exact:
@@ -107,6 +114,42 @@ class JsonStateStore:
                 return json.loads(response.read().decode("utf-8"))
         except Exception:
             return None
+
+    def _blob_api_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: bytes | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        if not self.token:
+            raise RuntimeError("BLOB_READ_WRITE_TOKEN is not configured.")
+        store_id = self._blob_store_id()
+        request = Request(
+            f"https://vercel.com/api/blob{path}",
+            data=body,
+            method=method,
+            headers={
+                "authorization": f"Bearer {self.token}",
+                "x-api-version": "12",
+                "x-api-blob-request-attempt": "0",
+                "x-api-blob-request-id": f"{store_id}:{int(time.time() * 1000)}",
+                "x-vercel-blob-store-id": store_id,
+                **(extra_headers or {}),
+            },
+        )
+        with urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+    def _blob_store_id(self) -> str:
+        explicit = os.environ.get("BLOB_STORE_ID")
+        if explicit:
+            return explicit.removeprefix("store_")
+        parts = self.token.split("_") if self.token else []
+        if len(parts) >= 4 and parts[3]:
+            return parts[3]
+        raise RuntimeError("Unable to derive Vercel Blob store id from token.")
 
 
 def default_store() -> JsonStateStore:
