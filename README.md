@@ -28,13 +28,14 @@ Open `http://127.0.0.1:8765` for the dashboard.
 - `data/generated/intelligence/latest.json` - latest structured intelligence cycle output.
 - `data/generated/intelligence/codex_queue/` - local durable queue for Codex backfill reviews when Codex was offline.
 - Dashboard API:
+  - `/api/all`
   - `/api/multi-agent`
   - `/api/intelligence`
   - `/api/intelligence-refresh`
-  - `/api/summary`
-  - `/api/forecasts`
-  - `/api/performance`
-  - `/api/odds-history`
+  - `/api/cron-refresh`
+  - `/api/run-history`
+  - `/api/model-state`
+  - `/api/correlation-matrix`
   - `/api/report`
 
 ## Modules
