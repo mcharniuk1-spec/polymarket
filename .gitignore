@@ -9,3 +9,4 @@ __pycache__/
 .playwright-mcp/
 data/generated/intelligence/codex_queue/
 data/generated/production_state/
+.env*
