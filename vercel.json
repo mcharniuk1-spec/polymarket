@@ -24,6 +24,12 @@
       "excludeFiles": "{tests/**,reports/**,graphify-out/**,docs/ai/vault_bootstrap/**,reference/**,web/**,data/generated/intelligence/codex_queue/**,**/__pycache__/**}"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron-refresh",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
