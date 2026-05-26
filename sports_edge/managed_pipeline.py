@@ -117,8 +117,9 @@ def run_managed_cycle(
 
     run_history = _append_run_history(previous_runs, snapshot)
     history_write = state_store.write_json(RUN_HISTORY_KEY, {"schema_version": 1, "runs": run_history})
-    agent_report = run_agent_replay(store=state_store)
-    ml_report = run_ml_update(store=state_store, global_review=global_review)
+    current_snapshots = {snapshot["id"]: snapshot}
+    agent_report = run_agent_replay(store=state_store, extra_snapshots=current_snapshots)
+    ml_report = run_ml_update(store=state_store, global_review=global_review, extra_snapshots=current_snapshots)
     intelligence["chronology"] = {
         "previousRunId": previous_id,
         "currentRunId": intelligence["id"],
@@ -199,7 +200,11 @@ def _attach_public_lifecycle_times(intelligence: dict[str, Any], dashboard_paylo
         }
 
 
-def run_agent_replay(*, store: JsonStateStore | None = None) -> dict[str, Any]:
+def run_agent_replay(
+    *,
+    store: JsonStateStore | None = None,
+    extra_snapshots: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     state_store = store or default_store()
     history = state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
     runs = sorted(history.get("runs", []), key=lambda row: row.get("cycleStartedAt") or row.get("createdAt") or "")
@@ -213,7 +218,7 @@ def run_agent_replay(*, store: JsonStateStore | None = None) -> dict[str, Any]:
         run_id = run["id"]
         if run_id in processed_ids:
             continue
-        snapshot = state_store.read_json(f"collection_runs/{run_id}.json")
+        snapshot = (extra_snapshots or {}).get(run_id) or state_store.read_json(f"collection_runs/{run_id}.json")
         if not snapshot:
             continue
         _append_agent_timelines(state, snapshot)
@@ -233,7 +238,12 @@ def run_agent_replay(*, store: JsonStateStore | None = None) -> dict[str, Any]:
     }
 
 
-def run_ml_update(*, store: JsonStateStore | None = None, global_review: bool = False) -> dict[str, Any]:
+def run_ml_update(
+    *,
+    store: JsonStateStore | None = None,
+    global_review: bool = False,
+    extra_snapshots: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     state_store = store or default_store()
     history = state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
     runs = sorted(history.get("runs", []), key=lambda row: row.get("cycleStartedAt") or row.get("createdAt") or "")
@@ -242,7 +252,7 @@ def run_ml_update(*, store: JsonStateStore | None = None, global_review: bool = 
     models: dict[str, Any] = {}
     examples = []
     for run in runs:
-        snapshot = state_store.read_json(f"collection_runs/{run['id']}.json")
+        snapshot = (extra_snapshots or {}).get(run["id"]) or state_store.read_json(f"collection_runs/{run['id']}.json")
         if not snapshot:
             continue
         for item in snapshot.get("dashboard", {}).get("multi_agent", {}).get("recommendations", []):
@@ -258,7 +268,7 @@ def run_ml_update(*, store: JsonStateStore | None = None, global_review: bool = 
         "health": _model_health(updated_models, examples),
         "diagnostics": _model_diagnostics(updated_models, examples),
     }
-    correlations = build_correlation_matrices(runs, state_store)
+    correlations = build_correlation_matrices(runs, state_store, extra_snapshots=extra_snapshots)
     model_write = state_store.write_json(MODEL_STATE_KEY, model_state)
     correlation_write = state_store.write_json(CORRELATION_KEY, correlations)
     return {
@@ -529,10 +539,15 @@ def _examples_for_scope(scope: str, examples: list[dict[str, Any]]) -> list[dict
     return []
 
 
-def build_correlation_matrices(runs: list[dict[str, Any]], store: JsonStateStore) -> dict[str, Any]:
+def build_correlation_matrices(
+    runs: list[dict[str, Any]],
+    store: JsonStateStore,
+    *,
+    extra_snapshots: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     category_markets: dict[str, dict[str, dict[str, Any]]] = {category: {} for category in ACTIVE_CATEGORIES}
     for run in runs:
-        snapshot = store.read_json(f"collection_runs/{run['id']}.json")
+        snapshot = (extra_snapshots or {}).get(run["id"]) or store.read_json(f"collection_runs/{run['id']}.json")
         if not snapshot:
             continue
         for item in snapshot.get("dashboard", {}).get("multi_agent", {}).get("recommendations", []):
