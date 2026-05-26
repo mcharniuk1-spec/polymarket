@@ -97,7 +97,7 @@ def run_managed_cycle(
     _attach_public_lifecycle_times(intelligence, dashboard_payload)
     previous_history = state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
     previous_runs = previous_history.get("runs", []) if isinstance(previous_history, dict) else []
-    previous_id = previous_runs[-1]["id"] if previous_runs else None
+    previous_id = next((row["id"] for row in reversed(previous_runs) if row.get("id") != intelligence["id"]), None)
     snapshot = {
         "id": intelligence["id"],
         "createdAt": intelligence["createdAt"],
