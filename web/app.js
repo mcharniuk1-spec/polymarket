@@ -1,6 +1,7 @@
 let dashboard = null;
 let sportsDashboard = null;
 let intelligenceDashboard = null;
+let modelProgressSelection = "all";
 let selectedCategory = "all";
 let refreshInFlight = false;
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
@@ -437,6 +438,7 @@ function renderIntelligence(payload) {
   renderChronology(payload);
   renderModelState(payload);
   renderCorrelations(payload);
+  renderModelProgress(payload);
 }
 
 function renderIntelligenceError(error) {
@@ -755,6 +757,310 @@ function renderCorrelations(payload) {
       `;
     })
     .join("");
+}
+
+function renderModelProgress(payload) {
+  const panel = document.getElementById("modelProgressPanel");
+  const summary = document.getElementById("modelProgressSummary");
+  const selector = document.getElementById("modelProgressSelector");
+  if (!panel || !summary || !selector) return;
+
+  const models = buildModelProgressModels(payload);
+  if (!models.length) {
+    summary.innerHTML = `
+      <article class="metric"><span>Models</span><strong>0</strong></article>
+      <article class="metric"><span>Markets</span><strong>0</strong></article>
+      <article class="metric"><span>Bet Rate</span><strong>0.0%</strong></article>
+      <article class="metric"><span>Avg CI Width</span><strong>0.0%</strong></article>
+    `;
+    selector.innerHTML = `<option value="all">All models</option>`;
+    panel.innerHTML = `<article class="empty-card">No multi-model forecast output is available yet. Run the managed agent and ML cycle to populate model progress.</article>`;
+    return;
+  }
+
+  const allowed = new Set(["all", ...models.map((model) => model.id)]);
+  const selected = allowed.has(modelProgressSelection) ? modelProgressSelection : "all";
+  modelProgressSelection = selected;
+  selector.innerHTML = [
+    `<option value="all">All models</option>`,
+    ...models.map((model) => `<option value="${escapeHtml(model.id)}">${escapeHtml(model.label)}</option>`),
+  ].join("");
+  selector.value = selected;
+  selector.onchange = (event) => {
+    modelProgressSelection = event.target.value;
+    renderModelProgress(intelligenceDashboard || payload);
+  };
+
+  const visibleModels = selected === "all" ? models : models.filter((model) => model.id === selected);
+  summary.innerHTML = renderModelProgressSummary(models, payload);
+  panel.innerHTML = visibleModels.map(renderModelProgressDetail).join("");
+}
+
+function buildModelProgressModels(payload) {
+  const rows = payload.marketAnalysisResults || [];
+  const grouped = new Map();
+
+  rows.forEach((row, index) => {
+    const marketPrice = readProbability(row.multiModelForecast?.marketPrice ?? row.marketSnapshot?.currentProbability);
+    const timestamp = row.lifecycleTimes?.estimatedAt || row.lifecycleTimes?.gatheredAt || payload.createdAt || "";
+    const forecast = row.multiModelForecast || {};
+    (forecast.outputs || []).forEach((output) => {
+      addModelProgressPoint(grouped, {
+        id: output.id || slugModelLabel(output.label),
+        label: output.label || output.id || "Model",
+        purpose: output.explanation || "",
+        probability: readProbability(output.probability),
+        marketPrice,
+        row,
+        index,
+        timestamp,
+      });
+    });
+    addModelProgressPoint(grouped, {
+      id: "ensemble",
+      label: "Ensemble",
+      purpose: forecast.expectation?.why || "Blended probability from rule, ML, OLS, IV, tree, news, and related odds context.",
+      probability: readProbability(forecast.ensembleProbability),
+      marketPrice,
+      row,
+      index,
+      timestamp,
+    });
+  });
+
+  const preferredOrder = ["rule", "logistic", "ols", "iv", "tree", "ensemble"];
+  return Array.from(grouped.values())
+    .map(finalizeModelProgress)
+    .sort((a, b) => {
+      const orderA = preferredOrder.indexOf(a.id);
+      const orderB = preferredOrder.indexOf(b.id);
+      if (orderA !== -1 || orderB !== -1) return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+      return a.label.localeCompare(b.label);
+    });
+}
+
+function addModelProgressPoint(grouped, point) {
+  if (point.probability === null) return;
+  const id = point.id || "model";
+  if (!grouped.has(id)) {
+    grouped.set(id, {
+      id,
+      label: point.label || id,
+      purpose: point.purpose || "",
+      points: [],
+    });
+  }
+  const marketPrice = point.marketPrice === null ? 0 : point.marketPrice;
+  grouped.get(id).points.push({
+    category: point.row.category || "market",
+    marketTitle: point.row.marketTitle || "Untitled market",
+    timestamp: point.timestamp || "",
+    marketPrice,
+    probability: point.probability,
+    edge: point.probability - marketPrice,
+    signal: point.row.decisionCommentary?.signal || "watch",
+    confidence: point.row.modelInterpretation?.confidenceLabel || "unknown",
+    newsScore: Number(point.row.newsMonitor?.score || 0),
+    correlationScore: Number(point.row.correlatedOddsInfluence?.score || 0),
+    index: point.index,
+  });
+}
+
+function finalizeModelProgress(model) {
+  const points = model.points;
+  const average = (selector) => points.reduce((sum, point) => sum + selector(point), 0) / Math.max(points.length, 1);
+  const trend = buildProbabilityTrend(points);
+  const highEdgeThreshold = 0.025;
+  const ciWidths = trend.samples.map((sample) => Math.max(0, sample.upper - sample.lower));
+  const averageCiWidth = ciWidths.reduce((sum, width) => sum + width, 0) / Math.max(ciWidths.length, 1);
+  return {
+    ...model,
+    avgProbability: average((point) => point.probability),
+    avgMarketPrice: average((point) => point.marketPrice),
+    avgEdge: average((point) => point.edge),
+    avgAbsEdge: average((point) => Math.abs(point.edge)),
+    positiveEdgeRate: points.filter((point) => point.edge > 0).length / Math.max(points.length, 1),
+    betRate: points.filter((point) => point.edge >= highEdgeThreshold).length / Math.max(points.length, 1),
+    fadeRate: points.filter((point) => point.edge <= -highEdgeThreshold).length / Math.max(points.length, 1),
+    avgNewsScore: average((point) => point.newsScore),
+    avgCorrelationScore: average((point) => point.correlationScore),
+    averageCiWidth,
+    trend,
+    topEdges: [...points].sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge)).slice(0, 8),
+    latestTimestamp: points.map((point) => point.timestamp).filter(Boolean).sort().at(-1) || "",
+  };
+}
+
+function buildProbabilityTrend(points) {
+  const usable = points
+    .map((point, order) => ({
+      ...point,
+      x: Number.isFinite(point.marketPrice) ? point.marketPrice : order / Math.max(points.length - 1, 1),
+      y: point.probability,
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+    .sort((a, b) => a.x - b.x);
+
+  if (!usable.length) {
+    return { slope: 0, intercept: 0, residualSe: 0, samples: [], points: [] };
+  }
+
+  const n = usable.length;
+  const meanX = usable.reduce((sum, point) => sum + point.x, 0) / n;
+  const meanY = usable.reduce((sum, point) => sum + point.y, 0) / n;
+  const sxx = usable.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0);
+  const sxy = usable.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0);
+  const slope = sxx > 0 ? sxy / sxx : 0;
+  const intercept = meanY - slope * meanX;
+  const residuals = usable.map((point) => point.y - (intercept + slope * point.x));
+  const residualSe = n > 2 ? Math.sqrt(residuals.reduce((sum, value) => sum + value ** 2, 0) / (n - 2)) : 0.035;
+  const minX = usable[0].x;
+  const maxX = usable[usable.length - 1].x;
+  const sampleCount = Math.min(28, Math.max(usable.length, 6));
+  const samples = Array.from({ length: sampleCount }, (_, index) => {
+    const x = sampleCount === 1 ? minX : minX + ((maxX - minX) * index) / (sampleCount - 1 || 1);
+    const prediction = clampProbability(intercept + slope * x);
+    const leverage = sxx > 0 ? Math.sqrt((1 / n) + ((x - meanX) ** 2 / sxx)) : 1;
+    const ci = Math.max(0.025, Math.min(0.22, 1.96 * residualSe * leverage));
+    return {
+      x,
+      prediction,
+      lower: clampProbability(prediction - ci),
+      upper: clampProbability(prediction + ci),
+    };
+  });
+
+  return { slope, intercept, residualSe, samples, points: usable };
+}
+
+function renderModelProgressSummary(models, payload) {
+  const marketCount = payload.summary?.marketCount || (payload.marketAnalysisResults || []).length;
+  const ensemble = models.find((model) => model.id === "ensemble") || models.at(-1);
+  const avgCiWidth = models.reduce((sum, model) => sum + model.averageCiWidth, 0) / Math.max(models.length, 1);
+  const avgEdgeRate = models.reduce((sum, model) => sum + model.positiveEdgeRate, 0) / Math.max(models.length, 1);
+  return `
+    <article class="metric"><span>Models</span><strong>${models.length}</strong></article>
+    <article class="metric"><span>Markets</span><strong>${marketCount || 0}</strong></article>
+    <article class="metric"><span>Ensemble Bet Rate</span><strong>${formatPercent(ensemble?.betRate || 0)}</strong></article>
+    <article class="metric"><span>Positive Edge Rate</span><strong>${formatPercent(avgEdgeRate)}</strong></article>
+    <article class="metric"><span>Avg CI Width</span><strong>${formatPercent(avgCiWidth)}</strong></article>
+    <article class="metric"><span>Last Estimated</span><strong>${shortTime(ensemble?.latestTimestamp || payload.createdAt)}</strong></article>
+  `;
+}
+
+function renderModelProgressDetail(model) {
+  const slopeLabel = `${model.trend.slope >= 0 ? "+" : ""}${model.trend.slope.toFixed(3)}`;
+  return `
+    <details class="model-progress-detail" open>
+      <summary>
+        <span>
+          <strong>${escapeHtml(model.label)}</strong>
+          <small>${escapeHtml(model.id)} · ${model.points.length} markets · slope ${slopeLabel}</small>
+        </span>
+        <span class="model-rate-chip">bet-rate ${formatPercent(model.betRate)} · edge ${formatSignedPercent(model.avgEdge)}</span>
+      </summary>
+      <div class="model-progress-body">
+        <div class="model-progress-stats">
+          <article><span>Avg forecast</span><strong>${formatPercent(model.avgProbability)}</strong></article>
+          <article><span>Avg odds</span><strong>${formatPercent(model.avgMarketPrice)}</strong></article>
+          <article><span>Positive edge</span><strong>${formatPercent(model.positiveEdgeRate)}</strong></article>
+          <article><span>Fade rate</span><strong>${formatPercent(model.fadeRate)}</strong></article>
+          <article><span>News score</span><strong>${formatSignedPercent(model.avgNewsScore)}</strong></article>
+          <article><span>Corr score</span><strong>${formatSignedPercent(model.avgCorrelationScore)}</strong></article>
+        </div>
+        ${renderModelProgressSvg(model)}
+        <p class="model-progress-note">${escapeHtml(model.purpose || "Current-run model diagnostics. Confidence bands are residual trend intervals, not settlement guarantees.")}</p>
+        <div class="table-wrap model-progress-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Market</th>
+                <th>Forecast</th>
+                <th>Odds</th>
+                <th>Edge</th>
+                <th>Signal</th>
+                <th>Estimated</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${model.topEdges.map((point) => `
+                <tr>
+                  <td>${escapeHtml(point.category)}</td>
+                  <td>${escapeHtml(point.marketTitle)}</td>
+                  <td>${formatPercent(point.probability)}</td>
+                  <td>${formatPercent(point.marketPrice)}</td>
+                  <td>${formatSignedPercent(point.edge)}</td>
+                  <td>${escapeHtml(point.signal)}</td>
+                  <td>${escapeHtml(point.timestamp || "-")}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+function renderModelProgressSvg(model) {
+  const trend = model.trend;
+  if (!trend.points.length) return `<p class="empty-note">No model trend points available.</p>`;
+  const width = 680;
+  const height = 310;
+  const left = 48;
+  const right = 26;
+  const top = 22;
+  const bottom = 44;
+  const allY = [
+    ...trend.points.map((point) => point.y),
+    ...trend.samples.flatMap((sample) => [sample.lower, sample.upper, sample.prediction]),
+  ];
+  const minY = Math.max(0, Math.min(...allY) - 0.04);
+  const maxY = Math.min(1, Math.max(...allY) + 0.04);
+  const minX = Math.max(0, Math.min(...trend.points.map((point) => point.x)));
+  const maxX = Math.min(1, Math.max(...trend.points.map((point) => point.x)));
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const scaleX = (value) => left + ((value - minX) / Math.max(maxX - minX, 0.001)) * plotWidth;
+  const scaleY = (value) => top + (1 - ((value - minY) / Math.max(maxY - minY, 0.001))) * plotHeight;
+  const bandTop = trend.samples.map((sample) => `${scaleX(sample.x)},${scaleY(sample.upper)}`).join(" ");
+  const bandBottom = [...trend.samples].reverse().map((sample) => `${scaleX(sample.x)},${scaleY(sample.lower)}`).join(" ");
+  const trendLine = trend.samples.map((sample) => `${scaleX(sample.x)},${scaleY(sample.prediction)}`).join(" ");
+  const idealLine = `${scaleX(minX)},${scaleY(minX)} ${scaleX(maxX)},${scaleY(maxX)}`;
+  return `
+    <svg class="model-progress-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(model.label)} probability trend with confidence interval">
+      <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" />
+      <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" />
+      <text x="8" y="${scaleY(maxY)}">${formatPercent(maxY)}</text>
+      <text x="8" y="${scaleY(minY)}">${formatPercent(minY)}</text>
+      <text x="${left}" y="${height - 12}">odds ${formatPercent(minX)}</text>
+      <text x="${width - 118}" y="${height - 12}">odds ${formatPercent(maxX)}</text>
+      <polygon class="ci-band" points="${bandTop} ${bandBottom}" />
+      <polyline class="ideal-line" points="${idealLine}" />
+      <polyline class="trend-line" points="${trendLine}" />
+      ${trend.points.map((point) => `
+        <circle class="${point.edge >= 0 ? "positive" : "negative"}" cx="${scaleX(point.x)}" cy="${scaleY(point.y)}" r="${Math.min(7, Math.max(3, 3 + Math.abs(point.edge) * 20))}">
+          <title>${escapeHtml(point.marketTitle)} · forecast ${formatPercent(point.y)} · odds ${formatPercent(point.x)} · edge ${formatSignedPercent(point.edge)}</title>
+        </circle>
+      `).join("")}
+      <text class="chart-caption" x="${left}" y="16">linear trend with 95% residual confidence interval</text>
+    </svg>
+  `;
+}
+
+function readProbability(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return clampProbability(number);
+}
+
+function clampProbability(value) {
+  return Math.max(0, Math.min(1, Number(value || 0)));
+}
+
+function slugModelLabel(label) {
+  return String(label || "model").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "model";
 }
 
 function renderModelHealthRow(row) {

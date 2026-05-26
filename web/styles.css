@@ -1261,6 +1261,191 @@ details.agent-card summary {
   }
 }
 
+.model-progress-shell {
+  overflow: hidden;
+}
+
+.model-progress-toolbar {
+  gap: 12px;
+}
+
+.model-progress-select {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.model-progress-select select {
+  min-width: 210px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 760;
+}
+
+.model-progress-panel {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.model-progress-detail,
+.empty-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(15, 23, 36, 0.05);
+}
+
+.empty-card {
+  padding: 18px;
+  color: var(--muted);
+}
+
+.model-progress-detail summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.model-progress-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.model-progress-detail summary strong {
+  display: block;
+  font-size: 17px;
+}
+
+.model-progress-detail summary small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.model-rate-chip {
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #eef5ff;
+  color: #1f3d74;
+  font-size: 12px;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+.model-progress-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.model-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.model-progress-stats article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: #fbfcfe;
+}
+
+.model-progress-stats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.model-progress-stats strong {
+  font-size: 20px;
+}
+
+.model-progress-note {
+  margin: 0;
+  color: #465366;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.model-progress-svg {
+  width: 100%;
+  min-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,250,252,0.94)),
+    radial-gradient(circle at 12% 18%, rgba(36, 87, 214, 0.10), transparent 32%),
+    radial-gradient(circle at 90% 80%, rgba(13, 143, 108, 0.10), transparent 30%);
+}
+
+.model-progress-svg line {
+  stroke: #b5bfce;
+}
+
+.model-progress-svg text {
+  fill: #596273;
+  font-size: 11px;
+}
+
+.model-progress-svg .chart-caption {
+  fill: #263344;
+  font-weight: 820;
+}
+
+.model-progress-svg .ci-band {
+  fill: rgba(36, 87, 214, 0.13);
+  stroke: rgba(36, 87, 214, 0.22);
+  stroke-width: 1;
+}
+
+.model-progress-svg .trend-line {
+  fill: none;
+  stroke: #2457d6;
+  stroke-width: 3;
+}
+
+.model-progress-svg .ideal-line {
+  fill: none;
+  stroke: #7b8798;
+  stroke-dasharray: 5 5;
+  stroke-width: 1.5;
+}
+
+.model-progress-svg circle {
+  fill-opacity: 0.76;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.model-progress-svg circle.positive {
+  fill: var(--positive);
+}
+
+.model-progress-svg circle.negative {
+  fill: var(--negative);
+}
+
+.model-progress-table {
+  max-height: 420px;
+  overflow: auto;
+}
+
 .plot-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1515,7 +1700,8 @@ pre {
   .news-grid,
   .sub-bets,
   .model-health-list,
-  .model-diagnostics-grid {
+  .model-diagnostics-grid,
+  .model-progress-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1560,8 +1746,21 @@ pre {
   .step-links,
   .model-health-list,
   .model-diagnostics-grid,
-  .weight-columns {
+  .weight-columns,
+  .model-progress-stats {
     grid-template-columns: 1fr;
+  }
+
+  .model-progress-detail summary,
+  .model-progress-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .model-rate-chip,
+  .model-progress-select,
+  .model-progress-select select {
+    width: 100%;
   }
 
   .model-health-row {

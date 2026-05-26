@@ -43,6 +43,7 @@
         <button class="tab" data-page="news" type="button">News</button>
         <button class="tab" data-page="events" type="button">Events</button>
         <button class="tab" data-page="intelligence" type="button">Intelligence</button>
+        <button class="tab" data-page="model-progress" type="button">Model Progress</button>
         <button class="tab" data-page="sports" type="button">Sports Odds</button>
         <button class="tab" data-page="categories" type="button">Categories</button>
         <button class="tab" data-page="details" type="button">Bet Detail</button>
@@ -247,6 +248,24 @@
             <span>related market context</span>
           </div>
           <div id="correlationPanel" class="correlation-panel"></div>
+        </section>
+      </section>
+
+      <section id="model-progress" class="page">
+        <div class="metric-grid sports-metrics" id="modelProgressSummary"></div>
+
+        <section class="panel model-progress-shell">
+          <div class="panel-header model-progress-toolbar">
+            <div>
+              <h2>Prediction Model Progress</h2>
+              <span>bet-rate, edge-rate, linear trends, and confidence intervals</span>
+            </div>
+            <label class="model-progress-select">
+              <span>Model</span>
+              <select id="modelProgressSelector" aria-label="Select prediction model progress view"></select>
+            </label>
+          </div>
+          <div id="modelProgressPanel" class="model-progress-panel"></div>
         </section>
       </section>
 
