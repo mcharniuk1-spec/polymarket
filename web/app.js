@@ -491,6 +491,8 @@ function renderIntelligenceSignals(payload) {
           <dt>Interval</dt><dd>${formatPercent(row.forecastChart.lowerInterval)} to ${formatPercent(row.forecastChart.upperInterval)}</dd>
         </dl>
         ${renderLifecycleTimes(row.lifecycleTimes)}
+        ${renderMultiModelForecast(row.multiModelForecast)}
+        ${renderNewsAndCorrelation(row.newsMonitor, row.correlatedOddsInfluence)}
         <div class="signal-notes">
           <strong>${escapeHtml(row.reliability.label)}</strong>
           <p>${escapeHtml(row.reliability.explanation)}</p>
@@ -514,6 +516,55 @@ function renderLifecycleTimes(times) {
       <dt>Expected resolution</dt><dd>${escapeHtml(row.expectedResolutionAt || "-")}</dd>
       <dt>Status</dt><dd>${escapeHtml((row.resolutionStatus || "pending").replaceAll("_", " "))}</dd>
     </dl>
+  `;
+}
+
+function renderMultiModelForecast(forecast) {
+  if (!forecast) return "";
+  const outputs = forecast.outputs || [];
+  return `
+    <section class="multi-model-card">
+      <header>
+        <strong>Multi-output forecast</strong>
+        <span>${escapeHtml(forecast.expectedDirection || "flat")} · ensemble ${formatPercent(forecast.ensembleProbability)}</span>
+      </header>
+      <p>${escapeHtml(forecast.expectation?.why || "")}</p>
+      <div class="model-output-grid">
+        ${outputs.map((model) => `
+          <article>
+            <strong>${escapeHtml(model.label)}</strong>
+            <span>${formatPercent(model.probability)}</span>
+            <small>${escapeHtml(model.explanation)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <dl class="compact-dl">
+        <dt>Model disagreement</dt><dd>${formatPercent(forecast.modelDisagreement)}</dd>
+        <dt>Direct odds dominate</dt><dd>${forecast.rules?.directMarketEvidenceDominates ? "yes" : "no"}</dd>
+        <dt>Related odds override</dt><dd>${forecast.rules?.relatedOddsNeverOverrideDirectMarket ? "never" : "allowed"}</dd>
+      </dl>
+    </section>
+  `;
+}
+
+function renderNewsAndCorrelation(news, correlation) {
+  if (!news && !correlation) return "";
+  const related = correlation?.relatedMarkets || [];
+  return `
+    <section class="news-corr-card">
+      <article>
+        <strong>News monitor</strong>
+        <span>${escapeHtml(news?.stance || "unknown")} · score ${formatSignedPercent(news?.score || 0)}</span>
+        <p>${escapeHtml(news?.argument || "No attached news signal.")}</p>
+        <ul>${(news?.topItems || []).slice(0, 3).map((item) => `<li>${escapeHtml(item.title)} <small>${escapeHtml(item.source || "")}</small></li>`).join("")}</ul>
+      </article>
+      <article>
+        <strong>Correlated odds instrument</strong>
+        <span>score ${formatSignedPercent(correlation?.score || 0)}</span>
+        <p>${escapeHtml(correlation?.argument || "No related odds signal.")}</p>
+        <ul>${related.slice(0, 4).map((item) => `<li>${escapeHtml(item.title || item.marketId)} <small>corr ${Number(item.correlation || 0).toFixed(2)} · delta ${formatSignedPercent(item.otherProbabilityDelta || 0)}</small></li>`).join("")}</ul>
+      </article>
+    </section>
   `;
 }
 
@@ -646,6 +697,7 @@ function renderModelState(payload) {
   }
   target.innerHTML = `
     <div class="model-dashboard">
+      ${renderOutputFamilies(state.outputFamilies || [])}
       <div class="model-health-list">
         ${health.slice(0, 24).map(renderModelHealthRow).join("")}
       </div>
@@ -659,6 +711,21 @@ function renderModelState(payload) {
           ${renderFeatureWeights(diagnostics.featureWeights || [])}
         </article>
       </div>
+    </div>
+  `;
+}
+
+function renderOutputFamilies(families) {
+  if (!families.length) return "";
+  return `
+    <div class="model-family-grid">
+      ${families.map((family) => `
+        <article>
+          <strong>${escapeHtml(family.label)}</strong>
+          <span>${Number(family.marketCount || 0)} markets</span>
+          <small>${escapeHtml(family.purpose || "")}</small>
+        </article>
+      `).join("")}
     </div>
   `;
 }

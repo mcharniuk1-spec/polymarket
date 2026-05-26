@@ -1177,6 +1177,90 @@ details.agent-card summary {
   font-weight: 720;
 }
 
+.multi-model-card,
+.news-corr-card {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fafc, #eef5ff);
+}
+
+.multi-model-card header,
+.model-family-grid article,
+.model-output-grid article,
+.news-corr-card article {
+  display: grid;
+  gap: 5px;
+}
+
+.multi-model-card header {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+}
+
+.multi-model-card p,
+.news-corr-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.model-output-grid,
+.model-family-grid,
+.news-corr-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.model-output-grid,
+.model-family-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.model-output-grid article,
+.model-family-grid article,
+.news-corr-card article {
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.model-output-grid span,
+.news-corr-card span,
+.model-family-grid span {
+  font-size: 17px;
+  font-weight: 820;
+}
+
+.model-output-grid small,
+.news-corr-card small,
+.model-family-grid small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.news-corr-card ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .multi-model-card header,
+  .model-output-grid,
+  .model-family-grid,
+  .news-corr-card {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plot-legend {
   display: flex;
   flex-wrap: wrap;

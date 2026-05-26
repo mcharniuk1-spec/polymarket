@@ -130,6 +130,7 @@ def run_managed_cycle(
     }
     intelligence["modelState"] = ml_report["modelState"]
     intelligence["correlations"] = ml_report["correlations"]
+    _attach_multi_model_forecasts(intelligence, dashboard_payload, ml_report)
     state_store.write_json(LATEST_INTELLIGENCE_KEY, intelligence)
     state_store.write_json(LATEST_DASHBOARD_KEY, dashboard_payload)
     return {
@@ -200,6 +201,358 @@ def _attach_public_lifecycle_times(intelligence: dict[str, Any], dashboard_paylo
         }
 
 
+def _attach_multi_model_forecasts(
+    intelligence: dict[str, Any],
+    dashboard_payload: dict[str, Any],
+    ml_report: dict[str, Any],
+) -> None:
+    recommendations = dashboard_payload.get("multi_agent", {}).get("recommendations", [])
+    items_by_market = {
+        item.get("candidate", {}).get("candidate_id"): item
+        for item in recommendations
+        if item.get("candidate", {}).get("candidate_id")
+    }
+    candidates_by_id = {market_id: item["candidate"] for market_id, item in items_by_market.items()}
+    correlations_by_market = _correlations_by_market(ml_report.get("correlations", {}), candidates_by_id)
+    model_state = ml_report.get("modelState", {})
+    models = model_state.get("models", {})
+    output_family_health = {"rule": 0, "logistic": 0, "ols": 0, "iv": 0, "tree": 0, "ensemble": 0}
+
+    for row in intelligence.get("marketAnalysisResults", []):
+        market_id = row.get("marketSlug") or row.get("marketId")
+        item = items_by_market.get(market_id)
+        if not item:
+            continue
+        candidate = item["candidate"]
+        features = _features(item)
+        question_id = classify_question(candidate.get("category", "culture"), candidate.get("market_title", ""))
+        global_model = models.get("global", {"weights": {key: 0.0 for key in FEATURE_KEYS}, "sampleCount": 0})
+        category_model = models.get(f"category:{candidate.get('category')}", global_model)
+        question_model = models.get(f"question:{question_id}", category_model)
+        correlation_signal = _correlated_odds_signal(candidate, correlations_by_market.get(market_id, []), candidates_by_id)
+        news_signal = _news_monitor_signal(candidate)
+        outputs = _forecast_output_bundle(item, features, global_model, category_model, question_model, news_signal, correlation_signal)
+        row["multiModelForecast"] = outputs
+        row["newsMonitor"] = news_signal
+        row["correlatedOddsInfluence"] = correlation_signal
+        row["modelInterpretation"].setdefault("mainDrivers", [])
+        row["modelInterpretation"]["mainDrivers"] = (
+            [
+                f"news monitor {news_signal['score']:+.2f} ({news_signal['stance']})",
+                f"correlated odds instrument {correlation_signal['score']:+.2f}",
+                f"ensemble probability {outputs['ensembleProbability']:.2%}",
+            ]
+            + row["modelInterpretation"]["mainDrivers"]
+        )[:8]
+        row["decisionCommentary"].setdefault("reasoning", [])
+        row["decisionCommentary"]["reasoning"] = (
+            [
+                outputs["expectation"]["why"],
+                news_signal["argument"],
+                correlation_signal["argument"],
+            ]
+            + row["decisionCommentary"]["reasoning"]
+        )[:8]
+        for key in output_family_health:
+            output_family_health[key] += 1
+
+    model_state["outputFamilies"] = _output_families(output_family_health["ensemble"])
+
+
+def _output_families(market_count: int) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": "rule",
+            "label": "News-weighted probability rule",
+            "purpose": "Transparent probability rule using market price, agent probability, news direction, correlated odds and spread risk.",
+            "marketCount": market_count,
+        },
+        {
+            "id": "logistic",
+            "label": "Online logistic ML",
+            "purpose": "Global/category/question online logistic models trained only on timestamp-valid known labels.",
+            "marketCount": market_count,
+        },
+        {
+            "id": "ols",
+            "label": "OLS-style linear probability",
+            "purpose": "Interpretable linear probability approximation for sensitivity against market price and agent edge.",
+            "marketCount": market_count,
+        },
+        {
+            "id": "iv",
+            "label": "IV-style correlated odds model",
+            "purpose": "Instrumental-variable style adjustment where related odds movement is an instrument, not a hard override.",
+            "marketCount": market_count,
+        },
+        {
+            "id": "tree",
+            "label": "Deterministic random-tree ensemble",
+            "purpose": "Small transparent tree ensemble over news, momentum, spread/liquidity and correlated odds regimes.",
+            "marketCount": market_count,
+        },
+        {
+            "id": "ensemble",
+            "label": "Final research ensemble",
+            "purpose": "Weighted blend of direct odds, ML, OLS-style, IV-style and tree outputs with news-first explanation.",
+            "marketCount": market_count,
+        },
+    ]
+
+
+def _forecast_output_bundle(
+    item: dict[str, Any],
+    features: dict[str, float],
+    global_model: dict[str, Any],
+    category_model: dict[str, Any],
+    question_model: dict[str, Any],
+    news_signal: dict[str, Any],
+    correlation_signal: dict[str, Any],
+) -> dict[str, Any]:
+    candidate = item["candidate"]
+    market_price = _safe_float(candidate.get("price"))
+    agent_probability = _safe_float(item.get("blended_probability"), market_price)
+    expected_value = _safe_float(item.get("expected_value"))
+    spread = _safe_float(candidate.get("spread"))
+    price_delta = _safe_float(features.get("price_delta"))
+    news_score = _safe_float(news_signal.get("score"))
+    corr_score = _safe_float(correlation_signal.get("score"))
+
+    logistic_global = _model_predict(global_model, features)
+    logistic_category = _model_predict(category_model, features)
+    logistic_question = _model_predict(question_model, features)
+    logistic_probability = _weighted_probability(
+        [
+            (logistic_global, 0.25 if int(global_model.get("sampleCount", 0)) else 0.08),
+            (logistic_category, 0.35 if int(category_model.get("sampleCount", 0)) else 0.10),
+            (logistic_question, 0.40 if int(question_model.get("sampleCount", 0)) else 0.12),
+            (agent_probability, 0.70 if not int(question_model.get("sampleCount", 0)) else 0.15),
+        ]
+    )
+    rule_probability = clamp(
+        market_price * 0.50
+        + agent_probability * 0.24
+        + 0.12 * (0.5 + news_score / 2)
+        + 0.08 * (0.5 + corr_score / 2)
+        + 0.06 * clamp(0.5 + price_delta * 4, 0.0, 1.0)
+        - min(spread * 0.30, 0.05),
+        0.01,
+        0.99,
+    )
+    ols_probability = clamp(
+        market_price
+        + 0.35 * (agent_probability - market_price)
+        + 0.22 * expected_value
+        + 0.16 * price_delta
+        + 0.10 * news_score
+        + 0.08 * corr_score
+        - 0.20 * spread,
+        0.01,
+        0.99,
+    )
+    iv_probability = clamp(
+        market_price
+        + 0.32 * (agent_probability - market_price)
+        + 0.24 * corr_score
+        + 0.14 * news_score
+        + 0.10 * price_delta
+        - 0.10 * spread,
+        0.01,
+        0.99,
+    )
+    tree_probability = _tree_ensemble_probability(market_price, agent_probability, expected_value, spread, price_delta, news_score, corr_score, features)
+    logistic_weight = 0.16 if any(int(model.get("sampleCount", 0)) for model in (global_model, category_model, question_model)) else 0.08
+    ensemble_probability = _weighted_probability(
+        [
+            (rule_probability, 0.26),
+            (logistic_probability, logistic_weight),
+            (ols_probability, 0.20),
+            (iv_probability, 0.18),
+            (tree_probability, 0.18),
+            (market_price, 0.10),
+        ]
+    )
+    direction = "up" if ensemble_probability - market_price > 0.025 else "down" if ensemble_probability - market_price < -0.025 else "flat"
+    disagreement = max(rule_probability, logistic_probability, ols_probability, iv_probability, tree_probability) - min(
+        rule_probability, logistic_probability, ols_probability, iv_probability, tree_probability
+    )
+    return {
+        "schemaVersion": 1,
+        "marketPrice": round(market_price, 4),
+        "agentProbability": round(agent_probability, 4),
+        "ensembleProbability": round(ensemble_probability, 4),
+        "expectedDirection": direction,
+        "modelDisagreement": round(disagreement, 4),
+        "outputs": [
+            _model_output("rule", "News-weighted rule", rule_probability, "Market price plus explicit news, correlation, momentum and spread adjustments."),
+            _model_output("logistic", "Online logistic ML", logistic_probability, "Global/category/question logistic probabilities, downweighted when labels are sparse."),
+            _model_output("ols", "OLS-style linear probability", ols_probability, "Linear probability sensitivity to agent edge, expected value, momentum, news and spread."),
+            _model_output("iv", "IV-style correlated odds", iv_probability, "Related market odds movement used as an instrument, not a direct override."),
+            _model_output("tree", "Deterministic random-tree ensemble", tree_probability, "Transparent tree votes over news, momentum, liquidity/spread and related-odds regimes."),
+        ],
+        "expectation": {
+            "direction": direction,
+            "probability": round(ensemble_probability, 4),
+            "why": _expectation_reason(direction, ensemble_probability, market_price, news_signal, correlation_signal, disagreement),
+        },
+        "rules": {
+            "newsWeight": 0.12,
+            "correlatedOddsContextWeight": 0.08,
+            "directMarketEvidenceDominates": True,
+            "relatedOddsNeverOverrideDirectMarket": True,
+        },
+    }
+
+
+def _model_output(model_id: str, label: str, probability: float, explanation: str) -> dict[str, Any]:
+    return {"id": model_id, "label": label, "probability": round(probability, 4), "explanation": explanation}
+
+
+def _tree_ensemble_probability(
+    market_price: float,
+    agent_probability: float,
+    expected_value: float,
+    spread: float,
+    price_delta: float,
+    news_score: float,
+    corr_score: float,
+    features: dict[str, float],
+) -> float:
+    votes = []
+    votes.append(market_price + (0.08 if news_score > 0.25 else -0.08 if news_score < -0.25 else 0.0))
+    votes.append(market_price + (0.06 if corr_score > 0.20 else -0.06 if corr_score < -0.20 else 0.0))
+    votes.append(market_price + (0.05 if price_delta > 0.015 else -0.05 if price_delta < -0.015 else 0.0))
+    votes.append(agent_probability + (0.04 if expected_value > 0.03 else -0.04 if expected_value < -0.03 else 0.0))
+    liquidity_depth = _safe_float(features.get("liquidity_depth"))
+    volatility = _safe_float(features.get("volatility"))
+    risk_penalty = (0.04 if spread > 0.05 else 0.0) + (0.03 if volatility > 0.04 else 0.0) + (0.02 if liquidity_depth < 0.05 else 0.0)
+    votes.append((market_price + agent_probability) / 2 - risk_penalty)
+    return clamp(mean(clamp(vote, 0.01, 0.99) for vote in votes), 0.01, 0.99)
+
+
+def _news_monitor_signal(candidate: dict[str, Any]) -> dict[str, Any]:
+    rows = candidate.get("news_items", [])
+    if not rows:
+        return {
+            "score": 0.0,
+            "stance": "no_attached_news",
+            "confidence": 0.0,
+            "argument": "News monitor: no attached timestamp-valid news items were available, so the forecast must rely mainly on odds and model context.",
+            "topItems": [],
+        }
+    scored = []
+    total_weight = 0.0
+    weighted = 0.0
+    for row in rows:
+        impact = _safe_float(row.get("impact"))
+        credibility = clamp(_safe_float(row.get("credibility"), 0.5), 0.0, 1.0)
+        weight = 0.25 + 0.75 * credibility
+        weighted += clamp(impact * 4.0, -1.0, 1.0) * weight
+        total_weight += weight
+        scored.append(
+            {
+                "title": row.get("headline") or row.get("title") or "Untitled news item",
+                "source": row.get("source", "unknown"),
+                "time": row.get("time"),
+                "impact": round(impact, 4),
+                "credibility": round(credibility, 4),
+            }
+        )
+    score = clamp(weighted / max(total_weight, 1e-9), -1.0, 1.0)
+    stance = "supports_yes" if score > 0.15 else "weakens_yes" if score < -0.15 else "mixed_or_neutral"
+    top = sorted(scored, key=lambda row: abs(row["impact"]) * row["credibility"], reverse=True)[:3]
+    direction_text = "supports" if score > 0 else "weakens" if score < 0 else "does not materially move"
+    return {
+        "score": round(score, 4),
+        "stance": stance,
+        "confidence": round(min(total_weight / max(len(rows), 1), 1.0), 4),
+        "argument": f"News monitor: attached news {direction_text} the Yes side with score {score:+.2f}; top item: {top[0]['title'] if top else 'none'}.",
+        "topItems": top,
+    }
+
+
+def _correlations_by_market(correlations: dict[str, Any], candidates_by_id: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    rows: dict[str, list[dict[str, Any]]] = {market_id: [] for market_id in candidates_by_id}
+    for category in correlations.get("categories", []):
+        for pair in category.get("pairs", []):
+            left = pair.get("left")
+            right = pair.get("right")
+            if left in rows:
+                rows[left].append({**pair, "other": right, "otherTitle": pair.get("rightTitle")})
+            if right in rows:
+                rows[right].append({**pair, "other": left, "otherTitle": pair.get("leftTitle")})
+    for market_id, pairs in rows.items():
+        pairs.sort(key=lambda row: abs(_safe_float(row.get("contextWeight"))), reverse=True)
+        rows[market_id] = pairs[:12]
+    return rows
+
+
+def _correlated_odds_signal(
+    candidate: dict[str, Any],
+    related_pairs: list[dict[str, Any]],
+    candidates_by_id: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    weighted = 0.0
+    weight_sum = 0.0
+    related = []
+    for pair in related_pairs:
+        other = candidates_by_id.get(pair.get("other"))
+        if not other:
+            continue
+        deltas = _price_deltas(other.get("odds_history", []))
+        other_delta = deltas[-1] if deltas else 0.0
+        context_weight = _safe_float(pair.get("contextWeight"))
+        weighted += context_weight * clamp(other_delta * 10, -1.0, 1.0)
+        weight_sum += abs(context_weight)
+        related.append(
+            {
+                "marketId": pair.get("other"),
+                "title": pair.get("otherTitle") or other.get("market_title"),
+                "correlation": pair.get("correlation"),
+                "contextWeight": round(context_weight, 4),
+                "otherProbabilityDelta": round(other_delta, 4),
+            }
+        )
+    score = clamp(weighted / max(weight_sum, 1e-9), -1.0, 1.0) if related else 0.0
+    if related:
+        argument = f"Correlated odds: {len(related)} related markets reviewed; instrument score {score:+.2f}, led by {related[0]['title']}."
+    else:
+        argument = "Correlated odds: no reliable overlapping related-market movement was available, so no IV adjustment was applied."
+    return {"score": round(score, 4), "argument": argument, "relatedMarkets": related[:6]}
+
+
+def _expectation_reason(
+    direction: str,
+    ensemble_probability: float,
+    market_price: float,
+    news_signal: dict[str, Any],
+    correlation_signal: dict[str, Any],
+    disagreement: float,
+) -> str:
+    edge = ensemble_probability - market_price
+    return (
+        f"Expectation is {direction}: ensemble is {ensemble_probability:.2%} versus market {market_price:.2%} "
+        f"(edge {edge:+.2%}); news score {news_signal.get('score', 0.0):+.2f}, "
+        f"correlated-odds instrument {correlation_signal.get('score', 0.0):+.2f}, "
+        f"model disagreement {disagreement:.2%}."
+    )
+
+
+def _weighted_probability(rows: list[tuple[float, float]]) -> float:
+    numerator = sum(clamp(value, 0.001, 0.999) * max(weight, 0.0) for value, weight in rows)
+    denominator = sum(max(weight, 0.0) for _, weight in rows)
+    return clamp(numerator / max(denominator, 1e-9), 0.001, 0.999)
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def run_agent_replay(
     *,
     store: JsonStateStore | None = None,
@@ -267,6 +620,7 @@ def run_ml_update(
         "models": updated_models,
         "health": _model_health(updated_models, examples),
         "diagnostics": _model_diagnostics(updated_models, examples),
+        "outputFamilies": _output_families(len(examples)),
     }
     correlations = build_correlation_matrices(runs, state_store, extra_snapshots=extra_snapshots)
     model_write = state_store.write_json(MODEL_STATE_KEY, model_state)
