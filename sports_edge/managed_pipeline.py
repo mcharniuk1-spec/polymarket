@@ -118,8 +118,8 @@ def run_managed_cycle(
     run_history = _append_run_history(previous_runs, snapshot)
     history_write = state_store.write_json(RUN_HISTORY_KEY, {"schema_version": 1, "runs": run_history})
     current_snapshots = {snapshot["id"]: snapshot}
-    agent_report = run_agent_replay(store=state_store, extra_snapshots=current_snapshots)
-    ml_report = run_ml_update(store=state_store, global_review=global_review, extra_snapshots=current_snapshots)
+    agent_report = run_agent_replay(store=state_store, extra_snapshots=current_snapshots, run_history=run_history)
+    ml_report = run_ml_update(store=state_store, global_review=global_review, extra_snapshots=current_snapshots, run_history=run_history)
     intelligence["chronology"] = {
         "previousRunId": previous_id,
         "currentRunId": intelligence["id"],
@@ -557,9 +557,10 @@ def run_agent_replay(
     *,
     store: JsonStateStore | None = None,
     extra_snapshots: dict[str, dict[str, Any]] | None = None,
+    run_history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     state_store = store or default_store()
-    history = state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
+    history = {"runs": run_history} if run_history is not None else state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
     runs = sorted(history.get("runs", []), key=lambda row: row.get("cycleStartedAt") or row.get("createdAt") or "")
     state = state_store.read_json(
         AGENT_STATE_KEY,
@@ -596,9 +597,10 @@ def run_ml_update(
     store: JsonStateStore | None = None,
     global_review: bool = False,
     extra_snapshots: dict[str, dict[str, Any]] | None = None,
+    run_history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     state_store = store or default_store()
-    history = state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
+    history = {"runs": run_history} if run_history is not None else state_store.read_json(RUN_HISTORY_KEY, {"runs": []})
     runs = sorted(history.get("runs", []), key=lambda row: row.get("cycleStartedAt") or row.get("createdAt") or "")
     # Rebuild from persisted chronological examples each run so repeated ML automations
     # cannot double-train on the same historical examples.
