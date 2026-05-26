@@ -118,7 +118,17 @@ The default production scheduler is GitHub Actions because it can call the deplo
 Configure Vercel environment variables:
 
 - `CRON_SECRET`
-- `BLOB_READ_WRITE_TOKEN`
+- `DATABASE_URL` or `POSTGRES_URL`
+
+PostgreSQL is the preferred durable state backend. With a database URL set, the cron endpoint creates/uses:
+
+- `pipeline_state` for dashboard-compatible JSON state.
+- `collection_runs` for each scheduled/manual run.
+- `market_snapshots` for every gathered outcome, newest-first by `published_at`, with gather/decision/resolution timestamps.
+- `market_news_items` for attached source reviews and URLs.
+- `model_metric_snapshots` for Brier/calibration/model-health checkpoints.
+
+`BLOB_READ_WRITE_TOKEN` is still supported as a fallback JSON mirror, but it does not provide the same queryable bet history.
 
 Local fallback remains available:
 
@@ -128,7 +138,7 @@ python3 -m sports_edge.cli run-agent-replay
 python3 -m sports_edge.cli run-ml-update --global-review
 ```
 
-Important Vercel limitation: without a durable external store, Vercel cannot reliably persist a cross-run queue from serverless functions. In that case the endpoint returns `codexQueue.status = emitted_not_persisted` with a queue item in the JSON response. A scheduler or future Vercel KV/Blob/Postgres adapter must save that item if Vercel-generated cycles need to be replayed locally later.
+Important Vercel limitation: without PostgreSQL, Vercel Blob, or another durable external store, Vercel cannot reliably persist a cross-run queue from serverless functions. In that case the endpoint returns `codexQueue.status = emitted_not_persisted` with a queue item in the JSON response. Configure PostgreSQL for reliable 15-minute run history and dashboard state.
 
 ## Storage
 

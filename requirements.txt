@@ -1,1 +1,2 @@
 vercel_blob==0.4.2
+psycopg[binary]==3.2.9

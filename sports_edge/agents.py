@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import math
 import random
 from dataclasses import dataclass, field
@@ -36,6 +37,9 @@ class MarketCandidate:
     odds_history: list[dict[str, Any]]
     resolution_notes: str
     resolved_outcome: int | None = None
+    published_at: str = ""
+    updated_at: str = ""
+    token_id: str = ""
 
     @property
     def decimal_odds(self) -> float:
@@ -113,6 +117,9 @@ class MarketCandidate:
             "liquidity": self.liquidity,
             "volume_24h": self.volume_24h,
             "end_time": self.end_time,
+            "published_at": self.published_at,
+            "updated_at": self.updated_at,
+            "token_id": self.token_id,
             "source": self.source,
             "source_url": self.source_url,
             "actors": self.actors,
@@ -233,7 +240,7 @@ class MarketDataAgent:
         offset = 0
         while len(markets) < target_count:
             limit = min(max(target_count - len(markets), 100), 500)
-            batch = self.client.fetch_gamma_markets(limit=limit, offset=offset)
+            batch = self.client.fetch_gamma_markets(limit=limit, offset=offset, order="createdAt")
             if not batch:
                 break
             markets.extend(batch)
@@ -257,11 +264,14 @@ class MarketDataAgent:
                 question = str(market.get("question") or market.get("title") or "Polymarket market")
                 category = self._normalize_category(str(market.get("category") or market.get("tags") or "culture"))
                 token_id = str(token_ids[idx]) if idx < len(token_ids) else ""
-                spread = self._spread_from_book(token_id)
+                spread = self._spread_from_market(market, token_id)
                 history = self._history_from_price(price, idx + len(candidates), live=True)
+                published_at = str(market.get("createdAt") or market.get("startDate") or market.get("updatedAt") or "")
+                updated_at = str(market.get("updatedAt") or published_at)
+                stable_market_id = self._stable_live_candidate_id(market, idx, token_id, str(outcome))
                 candidates.append(
                     MarketCandidate(
-                        candidate_id=f"live-{market.get('id', len(candidates))}-{idx}",
+                        candidate_id=stable_market_id,
                         event_id=str(market.get("conditionId") or market.get("id") or f"live-{len(candidates)}"),
                         category=category,
                         subcategory=str(market.get("groupItemTitle") or market.get("marketType") or "polymarket"),
@@ -280,11 +290,29 @@ class MarketDataAgent:
                         odds_history=history,
                         resolution_notes=str(market.get("resolutionSource") or market.get("description") or "Review Polymarket market rules before action.")[:280],
                         resolved_outcome=None,
+                        published_at=published_at,
+                        updated_at=updated_at,
+                        token_id=token_id,
                     )
                 )
                 if len(candidates) >= target_count:
-                    return candidates
-        return candidates
+                    return self._newest_first(candidates)
+        return self._newest_first(candidates)
+
+    @staticmethod
+    def _stable_live_candidate_id(market: dict[str, Any], outcome_index: int, token_id: str, outcome: str) -> str:
+        slug = str(market.get("slug") or market.get("marketSlug") or market.get("id") or "market")
+        token_part = token_id or str(market.get("conditionId") or outcome_index)
+        digest = hashlib.sha1(f"{slug}:{token_part}:{outcome}".encode("utf-8")).hexdigest()[:10]
+        return f"live-{slug}-{outcome_index}-{digest}"
+
+    @staticmethod
+    def _newest_first(candidates: list[MarketCandidate]) -> list[MarketCandidate]:
+        return sorted(
+            candidates,
+            key=lambda row: row.published_at or row.updated_at or row.end_time or "",
+            reverse=True,
+        )
 
     def _spread_from_book(self, token_id: str) -> float:
         if not token_id:
@@ -301,6 +329,22 @@ class MarketDataAgent:
         except (TypeError, ValueError):
             return 0.04
         return round(max(best_ask - best_bid, 0.0), 4)
+
+    def _spread_from_market(self, market: dict[str, Any], token_id: str) -> float:
+        try:
+            spread = float(market.get("spread"))
+            if spread >= 0:
+                return round(spread, 4)
+        except (TypeError, ValueError):
+            pass
+        try:
+            best_bid = float(market.get("bestBid"))
+            best_ask = float(market.get("bestAsk"))
+            if best_ask >= best_bid:
+                return round(best_ask - best_bid, 4)
+        except (TypeError, ValueError):
+            pass
+        return self._spread_from_book(token_id)
 
     @staticmethod
     def _polymarket_url(market: dict[str, Any]) -> str:
@@ -412,6 +456,8 @@ class MarketDataAgent:
                         odds_history=self._history_from_price(price, idx, live=False),
                         resolution_notes=self._fixture_resolution(category),
                         resolved_outcome=resolved,
+                        published_at=iso_z(base_time - timedelta(minutes=idx + len(candidates))),
+                        updated_at=iso_z(base_time),
                     )
                 )
         return candidates
@@ -865,6 +911,7 @@ class EvaluationLearningAgent:
         avg_odds = round(mean([float(item["candidate"]["decimal_odds"]) for item in bets]), 4) if bets else 0.0
         brier = self._brier(recommendations)
         log_loss = self._log_loss(recommendations)
+        classification = self._classification_metrics(recommendations)
         max_drawdown = round(max((peak - point["bankroll"]) / peak for point in curve), 4) if peak else 0.0
         return {
             "metrics": {
@@ -889,6 +936,7 @@ class EvaluationLearningAgent:
                 "max_drawdown": max_drawdown,
                 "brier_score": brier,
                 "log_loss": log_loss,
+                "classification": classification,
                 "calibration": self._calibration(recommendations),
             },
             "bankroll_curve": curve,
@@ -917,6 +965,47 @@ class EvaluationLearningAgent:
             actual = float(item["candidate"]["resolved_outcome"])
             total += -((actual * math.log(p)) + ((1.0 - actual) * math.log(1.0 - p)))
         return round(total / len(settled), 4)
+
+    @staticmethod
+    def _classification_metrics(recommendations: list[dict[str, Any]], threshold: float = 0.5) -> dict[str, Any]:
+        settled = [item for item in recommendations if item["candidate"].get("resolved_outcome") is not None]
+        if not settled:
+            return {
+                "threshold": threshold,
+                "sample_count": 0,
+                "true_positive": 0,
+                "false_positive": 0,
+                "true_negative": 0,
+                "false_negative": 0,
+                "precision": None,
+                "recall": None,
+                "specificity": None,
+                "accuracy": None,
+            }
+        true_positive = false_positive = true_negative = false_negative = 0
+        for item in settled:
+            predicted_yes = float(item["blended_probability"]) >= threshold
+            actual_yes = int(item["candidate"]["resolved_outcome"]) == 1
+            if predicted_yes and actual_yes:
+                true_positive += 1
+            elif predicted_yes and not actual_yes:
+                false_positive += 1
+            elif not predicted_yes and actual_yes:
+                false_negative += 1
+            else:
+                true_negative += 1
+        return {
+            "threshold": threshold,
+            "sample_count": len(settled),
+            "true_positive": true_positive,
+            "false_positive": false_positive,
+            "true_negative": true_negative,
+            "false_negative": false_negative,
+            "precision": _safe_ratio(true_positive, true_positive + false_positive),
+            "recall": _safe_ratio(true_positive, true_positive + false_negative),
+            "specificity": _safe_ratio(true_negative, true_negative + false_positive),
+            "accuracy": _safe_ratio(true_positive + true_negative, len(settled)),
+        }
 
     @staticmethod
     def _calibration(recommendations: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1040,9 +1129,11 @@ class MultiAgentPipeline:
         recommendations = self.decision_agent.build_recommendations(candidates, assessments)
         recommendations.sort(key=lambda item: item["rank_score"], reverse=True)
         evaluation = self.evaluation_agent.evaluate(recommendations)
-        paper_bets = [item for item in recommendations if item["decision"] == "PAPER_BET"]
-        watchlist = [item for item in recommendations if item["decision"] == "WATCHLIST"]
-        rejected = [item for item in recommendations if item["decision"] == "REJECTED"]
+        ranked_paper_bets = [item for item in recommendations if item["decision"] == "PAPER_BET"]
+        recommendations_by_date = sorted(recommendations, key=_recommendation_published_sort_key, reverse=True)
+        paper_bets = [item for item in recommendations_by_date if item["decision"] == "PAPER_BET"]
+        watchlist = [item for item in recommendations_by_date if item["decision"] == "WATCHLIST"]
+        rejected = [item for item in recommendations_by_date if item["decision"] == "REJECTED"]
         category_stats = self._category_stats(recommendations)
         return MultiAgentRun(
             run_id=f"multi-agent-{iso_z(now_utc())}",
@@ -1051,11 +1142,11 @@ class MultiAgentPipeline:
             source_mode=source_mode,
             source_note=self.market_data.source_note,
             candidates=[candidate.to_dict() for candidate in candidates],
-            recommendations=recommendations,
+            recommendations=recommendations_by_date,
             paper_bets=paper_bets,
             watchlist=watchlist,
             rejected=rejected,
-            top_bets=paper_bets[:10],
+            top_bets=ranked_paper_bets[:10],
             category_stats=category_stats,
             agent_performance=evaluation["agent_performance"],
             metrics=evaluation["metrics"],
@@ -1092,3 +1183,14 @@ class MultiAgentPipeline:
                 }
             )
         return rows
+
+
+def _recommendation_published_sort_key(item: dict[str, Any]) -> str:
+    candidate = item.get("candidate", {})
+    return str(candidate.get("published_at") or candidate.get("updated_at") or candidate.get("end_time") or "")
+
+
+def _safe_ratio(numerator: float, denominator: float) -> float | None:
+    if denominator == 0:
+        return None
+    return round(numerator / denominator, 4)

@@ -125,7 +125,16 @@ Authorization: Bearer $CRON_SECRET
 Required production secrets:
 
 - GitHub: `VERCEL_CRON_URL`, `CRON_SECRET`
-- Vercel: `CRON_SECRET`, `BLOB_READ_WRITE_TOKEN`
+- Vercel: `CRON_SECRET`, `DATABASE_URL` or `POSTGRES_URL`
+
+PostgreSQL is the preferred durable store. When a database URL is configured, each run writes both JSON state and queryable relational projections:
+
+- `collection_runs` - every scheduled/manual cycle.
+- `market_snapshots` - every gathered market/outcome with publication, collection, decision, and expected resolution timestamps.
+- `market_news_items` - timestamped source links/reviews attached to each market snapshot.
+- `model_metric_snapshots` - model health snapshots such as Brier/calibration inputs.
+
+`BLOB_READ_WRITE_TOKEN` remains supported as a fallback state mirror, but it is no longer the recommended production database.
 
 New dashboard/API state:
 

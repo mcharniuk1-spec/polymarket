@@ -173,7 +173,7 @@ def _attach_public_lifecycle_times(intelligence: dict[str, Any], dashboard_paylo
         item = by_candidate_id.get(candidate_id, {})
         candidate = item.get("candidate", {})
         expected_resolution_at = candidate.get("end_time")
-        outcome = (candidate.get("resolved_outcome") or row.get("state") or "").lower()
+        outcome = str(candidate.get("resolved_outcome") or row.get("state") or "").lower()
         resolved_at = expected_resolution_at if outcome in {"win", "loss", "yes", "no"} else None
         if outcome in {"win", "yes"}:
             resolution_status = "resolved_win"
@@ -650,6 +650,11 @@ def load_model_state(store: JsonStateStore | None = None) -> dict[str, Any]:
 
 def load_correlations(store: JsonStateStore | None = None) -> dict[str, Any]:
     return (store or default_store()).read_json(CORRELATION_KEY, {"schema_version": 1, "categories": []})
+
+
+def load_latest_dashboard(store: JsonStateStore | None = None) -> dict[str, Any] | None:
+    payload = (store or default_store()).read_json(LATEST_DASHBOARD_KEY)
+    return payload if isinstance(payload, dict) else None
 
 
 def _append_run_history(previous_runs: list[dict[str, Any]], snapshot: dict[str, Any]) -> list[dict[str, Any]]:

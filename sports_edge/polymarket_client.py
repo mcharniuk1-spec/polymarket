@@ -35,13 +35,14 @@ class PolymarketPublicClient:
         offset: int = 0,
         active: bool = True,
         closed: bool = False,
+        order: str = "createdAt",
     ) -> list[dict[str, Any]]:
         params = {
             "limit": min(max(limit, 1), 500),
             "offset": max(offset, 0),
             "active": str(active).lower(),
             "closed": str(closed).lower(),
-            "order": "volume",
+            "order": order,
             "ascending": "false",
         }
         payload = self._get_json(f"{self.endpoints.gamma_base}/markets", params)
