@@ -1,6 +1,9 @@
 name: Polymarket 15m Research Cycle
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "*/15 * * * *"
     - cron: "7 2 * * *"
@@ -22,7 +25,7 @@ jobs:
     steps:
       - name: Call managed Vercel cron endpoint
         env:
-          VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL }}
+          VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL || 'https://polymarket-research-dashboard.vercel.app/api/cron-refresh' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           TARGET_COUNT: ${{ github.event.inputs.target_count || '300' }}
           GLOBAL_REVIEW_INPUT: ${{ github.event.inputs.global_review || 'false' }}
@@ -33,19 +36,19 @@ jobs:
             echo "Missing VERCEL_CRON_URL secret"
             exit 1
           fi
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "Missing CRON_SECRET secret"
-            exit 1
-          fi
           GLOBAL_REVIEW="${GLOBAL_REVIEW_INPUT}"
           if [ "${SCHEDULE}" = "7 2 * * *" ]; then
             GLOBAL_REVIEW="true"
             TARGET_COUNT="600"
           fi
           URL="${VERCEL_CRON_URL}?source=live&cycle_type=scheduled_15m&target_count=${TARGET_COUNT}&global_review=${GLOBAL_REVIEW}"
-          curl --fail --show-error --silent \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${URL}" > response.json
+          if [ -n "${CRON_SECRET:-}" ]; then
+            curl --fail --show-error --silent \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              "${URL}" > response.json
+          else
+            curl --fail --show-error --silent "${URL}" > response.json
+          fi
           python3 - <<'PY'
           import json
           from pathlib import Path
