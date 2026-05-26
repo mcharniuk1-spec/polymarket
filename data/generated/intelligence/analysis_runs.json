@@ -1,5 +1,15 @@
 [
   {
+    "codexQueuePendingCount": 12,
+    "codexQueueStatus": "queued",
+    "createdAt": "2026-05-26T08:12:24Z",
+    "cycleType": "post_ingestion",
+    "id": "intel-1635d613ae",
+    "localCodexStatus": "skipped",
+    "marketCount": 300,
+    "status": "success"
+  },
+  {
     "codexQueuePendingCount": 11,
     "codexQueueStatus": "queued",
     "createdAt": "2026-05-25T17:25:12Z",
