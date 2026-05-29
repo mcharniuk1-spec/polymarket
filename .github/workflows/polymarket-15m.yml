@@ -35,6 +35,21 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Validate source registry
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from collections import Counter
+          from sports_edge.source_registry import SourceRegistry
+
+          registry = SourceRegistry()
+          errors = registry.validate()
+          if errors:
+              raise SystemExit("Invalid source registry:\n" + "\n".join(errors))
+          counts = Counter(source.category for source in registry.sources)
+          print("source_registry_ok", dict(sorted(counts.items())))
+          PY
+
       - name: Run managed research cycle
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

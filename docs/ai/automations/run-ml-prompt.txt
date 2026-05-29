@@ -5,6 +5,8 @@ Instruction file: docs/ai/automations/run-ml-instructions.md
 
 Update global, category, and recurring-question online logistic models from chronological run state only. Build category correlation matrices across all relevant related bets, including persistent daily bet archetypes and dependent/sibling markets. Use correlations as contextual features, not hard overrides. Do not use future data, later news, or outcomes unavailable at the modeled timestamp.
 
+When external series are available, link them by entity/event and as-of timestamp. Compute raw, lagged, residual, and forecast-error correlations with overlap counts and confidence intervals. Downweight or mark sparse any fallback-derived, stale, or low-overlap series.
+
 Output updated model health, correlation summaries, sparse-data warnings, and dashboard-ready state.
 
 Do not place bets, do not touch wallets, do not store credentials, and do not execute orders.

@@ -5,4 +5,6 @@ Instruction file: docs/ai/automations/full-run-instructions.md
 
 First run chronological agent analysis. Then run ML and correlation updates. Then refresh dashboard-ready state. Preserve strict timestamp order and never use future information for past decisions. If no new data exists, output OK with the current latest run id and dashboard status.
 
+Consult docs/ai/source_registry.json and docs/ai/runs/20260529_external_series_source_expansion.md. Report fetched, planned, and blocked external sources for crypto, sports, geopolitics, macro, trade, company, and global context. Use external data only when it is timestamped, source-attributed, and available as of the decision time.
+
 Do not place bets, do not touch wallets, do not store credentials, and do not execute orders.

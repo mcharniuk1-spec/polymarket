@@ -14,6 +14,7 @@ from sports_edge.agents import ACTIVE_CATEGORIES, MarketDataAgent, MultiAgentPip
 from sports_edge.bet_research import BetResearchPlanner
 from sports_edge.codex_queue import drain_codex_queue, enqueue_codex_review, queue_summary
 from sports_edge.dashboard_data import build_dashboard_payload
+from sports_edge.full_scan import run_full_scan
 from sports_edge.intelligence import run_intelligence_cycle, validate_news_sources
 from sports_edge.managed_pipeline import run_agent_replay, run_managed_cycle, run_ml_update
 from sports_edge.odds_math import american_to_decimal, american_to_implied_probability
@@ -25,6 +26,51 @@ from sports_edge.vercel_api import cron_authorized
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _fake_gamma_market(index: int) -> dict[str, object]:
+    price = 0.42 + ((index % 10) / 100.0)
+    return {
+        "id": str(1000 + index),
+        "question": f"Will Bitcoin close above test threshold #{index}?",
+        "conditionId": f"condition-{index}",
+        "slug": f"fake-market-{index}",
+        "resolutionSource": "https://example.com/resolution",
+        "endDate": "2026-05-30T00:00:00Z",
+        "liquidity": "1000",
+        "liquidityNum": 1000 + index,
+        "volume": "100",
+        "volume24hr": 100 + index,
+        "active": True,
+        "closed": False,
+        "archived": False,
+        "createdAt": "2026-05-29T08:00:00Z",
+        "updatedAt": "2026-05-29T08:05:00Z",
+        "enableOrderBook": True,
+        "acceptingOrders": True,
+        "outcomes": '["Yes","No"]',
+        "outcomePrices": json.dumps([round(price, 3), round(1.0 - price, 3)]),
+        "clobTokenIds": json.dumps([f"token-{index}-yes", f"token-{index}-no"]),
+        "bestBid": max(price - 0.01, 0.0),
+        "bestAsk": min(price + 0.01, 1.0),
+        "spread": 0.02,
+        "oneHourPriceChange": 0.01,
+        "oneDayPriceChange": -0.01,
+        "oneWeekPriceChange": 0.02,
+        "description": "Fixture public market metadata for full-scan pagination test.",
+        "events": [
+            {
+                "id": f"event-{index // 2}",
+                "slug": f"event-{index // 2}",
+                "title": f"Bitcoin threshold event {index // 2}",
+                "description": "Event metadata",
+                "resolutionSource": "https://example.com/resolution",
+                "createdAt": "2026-05-29T08:00:00Z",
+                "updatedAt": "2026-05-29T08:05:00Z",
+                "series": [{"title": "BTC thresholds", "slug": "btc-thresholds"}],
+            }
+        ],
+    }
 
 
 class OddsMathTests(unittest.TestCase):
@@ -164,6 +210,52 @@ class SourceRegistryTests(unittest.TestCase):
         self.assertIn("strongestSources", first["newsContext"])
         self.assertEqual(payload["codexQueue"]["status"], "emitted_not_persisted")
         self.assertFalse(payload["codexQueue"]["durable"])
+
+    def test_full_scan_uses_paginated_gamma_and_top_limit(self) -> None:
+        class FakeFullScanClient:
+            def __init__(self) -> None:
+                self.pages = [
+                    [_fake_gamma_market(index) for index in range(60)],
+                    [_fake_gamma_market(index) for index in range(60, 120)],
+                    [],
+                ]
+                self.calls = []
+
+            def fetch_gamma_markets(self, limit: int, offset: int, active: bool, closed: bool, order: str):
+                self.calls.append({"limit": limit, "offset": offset, "active": active, "closed": closed, "order": order})
+                page_index = 0 if offset == 0 else 1 if offset == 60 else 2
+                return self.pages[page_index]
+
+            def fetch_price_history(self, token_id: str, start_ts: int | None = None, end_ts: int | None = None, fidelity: int = 60):
+                return {
+                    "history": [
+                        {"t": 1780041600, "p": 0.41},
+                        {"t": 1780045200, "p": 0.43},
+                        {"t": 1780048800, "p": 0.45},
+                    ]
+                }
+
+        client = FakeFullScanClient()
+        payload = run_full_scan(
+            max_pages=3,
+            page_size=60,
+            top_limit=25,
+            scan_date="2026-05-29",
+            current_day_only=True,
+            persist=False,
+            run_intelligence=False,
+            client=client,
+        )
+        self.assertTrue(payload["summary"]["research_only"])
+        self.assertEqual(payload["summary"]["rawMarketCount"], 120)
+        self.assertEqual(payload["summary"]["candidateOutcomeCount"], 240)
+        self.assertEqual(payload["summary"]["topRecommendationCount"], 25)
+        self.assertGreater(payload["summary"]["eventGroupCount"], 0)
+        self.assertEqual(payload["summary"]["timeSeries"]["observedHistoryCount"], 200)
+        self.assertTrue(payload["agentSourceMatrix"]["rows"])
+        self.assertTrue(payload["correlations"]["categories"])
+        self.assertEqual(client.calls[0]["offset"], 0)
+        self.assertEqual(client.calls[1]["offset"], 60)
 
     def test_codex_queue_persists_pending_work_and_skips_when_codex_disabled(self) -> None:
         payload = run_intelligence_cycle(

@@ -110,14 +110,24 @@ Vercel has safe endpoints:
 - `/api/model-state` returns online logistic model health.
 - `/api/correlation-matrix` returns related-market correlation matrices.
 
-The default production scheduler is GitHub Actions because it can call the deployed endpoint every 15 minutes independent of Vercel Cron plan limits. Configure repository secrets:
+The default production scheduler is GitHub Actions because it can run the managed cycle on a runner every 15 minutes independent of Vercel Cron plan limits and Vercel function timeouts. Heavy collection/model work should run in GitHub Actions or a dedicated worker, not inside the Vercel `/api/cron-refresh` function.
 
-- `VERCEL_CRON_URL=https://polymarket-research-dashboard.vercel.app/api/cron-refresh`
-- `CRON_SECRET=<same value configured on Vercel>`
+Configure at least one durable storage secret in GitHub Actions:
+
+- `DATABASE_URL`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL_NON_POOLING`
+- or `BLOB_READ_WRITE_TOKEN` plus optional `BLOB_STORE_ID`
+
+The workflow runs:
+
+```bash
+python3 -m sports_edge.cli run-managed-cycle --source live --cycle-type scheduled_15m --target-count 80
+```
+
+Vercel remains the dashboard/API host and smoke-check target. `/api/cron-refresh` is still available for small manual refreshes, but it is not the reliable production path for the full cycle.
 
 Configure Vercel environment variables:
 
-- `CRON_SECRET`
+- `CRON_SECRET` if `/api/cron-refresh` is exposed
 - `DATABASE_URL` or `POSTGRES_URL`
 
 PostgreSQL is the preferred durable state backend. With a database URL set, the cron endpoint creates/uses:

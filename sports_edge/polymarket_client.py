@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -25,9 +26,15 @@ class PolymarketPublicClient:
     This client intentionally excludes wallet, credential, signing, and order execution paths.
     """
 
-    def __init__(self, endpoints: PolymarketEndpointSet | None = None, timeout_seconds: float = 12.0) -> None:
+    def __init__(
+        self,
+        endpoints: PolymarketEndpointSet | None = None,
+        timeout_seconds: float = 12.0,
+        ssl_context: ssl.SSLContext | None = None,
+    ) -> None:
         self.endpoints = endpoints or PolymarketEndpointSet()
         self.timeout_seconds = timeout_seconds
+        self.ssl_context = ssl_context or default_ssl_context()
 
     def fetch_gamma_markets(
         self,
@@ -96,10 +103,19 @@ class PolymarketPublicClient:
             },
         )
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
+            with urlopen(request, timeout=self.timeout_seconds, context=self.ssl_context) as response:
                 return json.loads(response.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise PolymarketClientError(str(exc)) from exc
+
+
+def default_ssl_context() -> ssl.SSLContext:
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
 
 
 def parse_polymarket_list(value: Any) -> list[Any]:

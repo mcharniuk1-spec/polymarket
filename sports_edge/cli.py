@@ -8,6 +8,7 @@ from .agents import ACTIVE_CATEGORIES, MultiAgentPipeline
 from .backtesting import Backtester
 from .bet_research import BetResearchPlanner
 from .codex_queue import drain_codex_queue, queue_summary
+from .full_scan import run_full_scan
 from .intelligence import run_intelligence_cycle
 from .managed_pipeline import load_correlations, load_model_state, load_run_history, run_agent_replay, run_managed_cycle, run_ml_update
 from .reporting import PerformanceReporter
@@ -113,6 +114,37 @@ def run_managed(source: str, target_count: int, cycle_type: str, global_review: 
     return 0 if payload.get("ok") else 1
 
 
+def run_full_scan_cli(
+    max_pages: int,
+    page_size: int,
+    top_limit: int,
+    scan_date: str | None,
+    all_active: bool,
+    min_liquidity: float,
+    max_spread: float,
+    history_sample_limit: int,
+    history_hours: int,
+    history_fidelity: int,
+    no_intelligence: bool,
+) -> int:
+    payload = run_full_scan(
+        max_pages=max_pages,
+        page_size=page_size,
+        top_limit=top_limit,
+        scan_date=scan_date,
+        current_day_only=not all_active,
+        min_liquidity=min_liquidity,
+        max_spread=max_spread,
+        history_sample_limit=history_sample_limit,
+        history_hours=history_hours,
+        history_fidelity=history_fidelity,
+        persist=True,
+        run_intelligence=not no_intelligence,
+    )
+    print(json.dumps({"ok": True, **payload["summary"], "artifactPaths": payload.get("artifactPaths", {})}, indent=2, sort_keys=True))
+    return 0
+
+
 def run_agents_replay_cli() -> int:
     payload = run_agent_replay()
     print(json.dumps(payload, indent=2, sort_keys=True))
@@ -164,6 +196,18 @@ def main() -> int:
     managed_parser.add_argument("--target-count", type=int, default=300)
     managed_parser.add_argument("--cycle-type", choices=["scheduled_15m", "post_ingestion", "manual"], default="scheduled_15m")
     managed_parser.add_argument("--global-review", action="store_true")
+    full_scan_parser = subparsers.add_parser("run-full-scan", help="Run a public read-only full Gamma scan and top-100 paper ranking")
+    full_scan_parser.add_argument("--max-pages", type=int, default=30)
+    full_scan_parser.add_argument("--page-size", type=int, default=100)
+    full_scan_parser.add_argument("--top-limit", type=int, default=100)
+    full_scan_parser.add_argument("--scan-date", default=None)
+    full_scan_parser.add_argument("--all-active", action="store_true")
+    full_scan_parser.add_argument("--min-liquidity", type=float, default=1.0)
+    full_scan_parser.add_argument("--max-spread", type=float, default=0.25)
+    full_scan_parser.add_argument("--history-sample-limit", type=int, default=200)
+    full_scan_parser.add_argument("--history-hours", type=int, default=24)
+    full_scan_parser.add_argument("--history-fidelity", type=int, default=60)
+    full_scan_parser.add_argument("--no-intelligence", action="store_true")
     subparsers.add_parser("run-agent-replay", help="Replay unprocessed persisted runs chronologically")
     ml_parser = subparsers.add_parser("run-ml-update", help="Update online ML and correlation state from persisted runs")
     ml_parser.add_argument("--global-review", action="store_true")
@@ -187,6 +231,20 @@ def main() -> int:
         return run_codex_queue(args.limit, args.summary)
     if args.command == "run-managed-cycle":
         return run_managed(args.source, args.target_count, args.cycle_type, args.global_review)
+    if args.command == "run-full-scan":
+        return run_full_scan_cli(
+            args.max_pages,
+            args.page_size,
+            args.top_limit,
+            args.scan_date,
+            args.all_active,
+            args.min_liquidity,
+            args.max_spread,
+            args.history_sample_limit,
+            args.history_hours,
+            args.history_fidelity,
+            args.no_intelligence,
+        )
     if args.command == "run-agent-replay":
         return run_agents_replay_cli()
     if args.command == "run-ml-update":

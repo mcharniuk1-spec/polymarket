@@ -11,6 +11,10 @@ Rules:
 - Include direct recurring bets, sibling outcomes, same-event markets, same-actor markets, and strongly related topic markets.
 - Compute price-delta correlations only over overlapping historical windows.
 - Compute coefficient similarity from model weights.
+- Build external-series features only from normalized points with `released_at <= decision_at`:
+  log returns/deltas, rolling z-scores, EWMA trend, realized volatility, lagged deltas, source staleness, missingness flags, and entity-link confidence.
+- For crypto, sports, geopolitics, macro, trade, and company panels, compute market-external raw correlation, lagged correlation, and residual/error correlation after removing baseline market price, liquidity, spread, and news/context effects.
+- Store correlation metadata: window, lag, overlap count, source ids, entity link, Fisher-z confidence interval when possible, sparse/unreliable flags, and whether the series is observed or fallback-derived.
 - Store related-bet influence as context features, not as hard decision overrides.
 - Record sparse data, missing overlap, and unreliable correlations explicitly.
 
