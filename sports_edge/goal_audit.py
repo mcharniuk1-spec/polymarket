@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 POSTGRES_PROOF_PATH = "docs/ai/proofs/20260611_postgres_migration_proof.json"
 PRODUCTION_CRON_PROOF_PATH = "docs/ai/proofs/20260611_production_cron_run.json"
 LIVE_SOURCE_PROOF_PATH = "docs/ai/proofs/20260611_live_source_validation.json"
+DURABLE_DAILY_PROOF_PATH = "docs/ai/proofs/20260611_durable_daily_write.json"
 
 MILESTONE_TABLES = (
     "cron_runs",
@@ -37,6 +38,7 @@ REQUIREMENTS = [
     ("three_agents", "Context, Data, and Decision Agent contracts exist and are wired.", ["sports_edge/context_agent.py", "sports_edge/data_agent.py", "sports_edge/decision_agent.py", "sports_edge/orchestrator.py"]),
     ("model_families", "At least 3-4 model families with disagreement reporting.", ["sports_edge/model_scoring.py", "sports_edge/schemas.py"]),
     ("daily_run_order", "Daily run evaluates prior bets, context, data, models, bet-specific context, decisions, and output persistence.", ["sports_edge/orchestrator.py", "sports_edge/outcome_evaluator.py"]),
+    ("durable_daily_write_proof", "Daily analytical runs have proven duplicate-safe durable persistence.", ["sports_edge/orchestrator.py", DURABLE_DAILY_PROOF_PATH]),
     ("collector_15m", "15-minute collector contract with idempotency.", ["sports_edge/orchestrator.py", ".github/workflows/polymarket-15m.yml"]),
     ("sofia_daily", "09:00 Europe/Sofia daily analytical schedule or UTC equivalent.", ["sports_edge/orchestrator.py", ".github/workflows/polymarket-15m.yml"]),
     ("dashboard_api", "Dashboard/API exposes status, freshness, context, candidates, decisions, models, sources, portfolio, performance, warnings, errors.", ["sports_edge/dashboard_api.py", "api/dashboard-contract.py", "web/app.js"]),
@@ -96,6 +98,8 @@ def _status_for_requirement(requirement_id: str, evidence: list[dict[str, Any]],
         return "proven" if all(row.get("passed") for row in checks) else "missing"
     if requirement_id == "deployed_cron_proof":
         return "proven" if all(row.get("passed") for row in checks) else "missing"
+    if requirement_id == "durable_daily_write_proof":
+        return "proven" if all(row.get("passed") for row in checks) else "missing"
     if requirement_id in {"live_official_adapters", "live_resolution_proof"}:
         return "proven" if all(row.get("passed") for row in checks) else "partial"
     file_evidence_ok = all(row["exists"] and row["size"] > 0 for row in evidence)
@@ -150,6 +154,16 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
             _check("gates_bet_specific_context", "bet_specific_context_reports" in orchestrator and "relevant_candidates" in context_agent),
             _check("validates_schema", "_validate_contracts" in orchestrator and "schemaValidation" in orchestrator),
             _check("writes_daily_payload", "daily_runs/latest.json" in orchestrator and "state_store.write_json" in orchestrator),
+        ]
+    if requirement_id == "durable_daily_write_proof":
+        proof = _read_json(DURABLE_DAILY_PROOF_PATH)
+        return [
+            _check("daily_write_path_exists", "run_daily_analysis" in _read_text("sports_edge/orchestrator.py") and "duplicate_skipped" in _read_text("sports_edge/orchestrator.py")),
+            _check(
+                "durable_daily_write_proof",
+                _durable_daily_proof_valid(proof),
+                {"proofItem": "durable_daily_write_proof", "proofPath": DURABLE_DAILY_PROOF_PATH},
+            ),
         ]
     if requirement_id == "collector_15m":
         return [
@@ -280,6 +294,7 @@ def _gap_for_requirement(requirement_id: str, status: str) -> str | None:
     gaps = {
         "live_official_adapters": f"Adapters are read-only and callable, but live source parsing/ToS-specific numeric extraction still requires approved network validation in `{LIVE_SOURCE_PROOF_PATH}`.",
         "live_resolution_proof": f"Stored closed-market snapshot resolution exists; live proof URL ingestion still needs approved public endpoint validation in `{LIVE_SOURCE_PROOF_PATH}`.",
+        "durable_daily_write_proof": f"Run an approved durable fixture daily write plus duplicate rerun, sanitize the evidence, and write `{DURABLE_DAILY_PROOF_PATH}` with `python3 -m sports_edge.cli durable-daily-proof --evidence-in <sanitized-daily-evidence.json>`.",
         "postgres_apply_proof": f"Run `python3 -m sports_edge.cli migrate` with an approved database URL and save sanitized proof to `{POSTGRES_PROOF_PATH}`.",
         "deployed_cron_proof": f"Run scheduled jobs, sanitize the evidence, and write `{PRODUCTION_CRON_PROOF_PATH}` with `python3 -m sports_edge.cli production-cron-proof --evidence-in <sanitized-cron-evidence.json>`.",
         "deployed_dashboard_proof": "Deploy and verify public Vercel dashboard/API endpoints.",
@@ -336,6 +351,32 @@ def _production_cron_proof_valid(proof: dict[str, Any]) -> bool:
         and checks.get("durable_storage_gate_passed") is True
         and checks.get("logs_contain_credentials") is False
         and checks.get("dashboard_reflects_run") is True
+        and checks.get("wallet_or_order_execution_enabled") is False
+    )
+
+
+def _durable_daily_proof_valid(proof: dict[str, Any]) -> bool:
+    checks = proof.get("checks", {}) if isinstance(proof.get("checks"), dict) else {}
+    first_run = proof.get("firstRun", {}) if isinstance(proof.get("firstRun"), dict) else {}
+    duplicate_run = proof.get("duplicateRun", {}) if isinstance(proof.get("duplicateRun"), dict) else {}
+    storage = proof.get("storage", {}) if isinstance(proof.get("storage"), dict) else {}
+    return (
+        bool(proof)
+        and proof.get("proof_id", "").startswith("durable_daily_write_")
+        and proof.get("researchOnly") is True
+        and proof.get("paperTradingOnly") is True
+        and first_run.get("sourceMode") == "fixture"
+        and first_run.get("status") == "success"
+        and first_run.get("storageWritten") is True
+        and isinstance(first_run.get("idempotencyKey"), str)
+        and first_run.get("idempotencyKey", "").startswith("daily:")
+        and duplicate_run.get("status") == "duplicate_skipped"
+        and duplicate_run.get("storageWritten") is False
+        and duplicate_run.get("idempotencyKey") == first_run.get("idempotencyKey")
+        and storage.get("durable") is True
+        and checks.get("duplicate_write_protected") is True
+        and checks.get("dry_run") is False
+        and checks.get("logs_contain_credentials") is False
         and checks.get("wallet_or_order_execution_enabled") is False
     )
 

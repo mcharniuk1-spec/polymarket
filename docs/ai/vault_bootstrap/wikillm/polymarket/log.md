@@ -21,3 +21,4 @@
 - 2026-06-11: Redeployed the Vercel production dashboard/API as `dpl_FgJp9cAwu9TGAorsJyhLxEAUhGjD`; cron function routes are present, but scheduled production cron proof remains missing until a real scheduled durable run is captured.
 - 2026-06-11: Added `production-cron-proof` to generate sanitized scheduled-job proof from approved evidence for both the 15-minute collector and Sofia daily run. The goal audit remains incomplete until real proof files exist.
 - 2026-06-11: Added `live-source-proof` so approved read-only live-source validation can prove macro, politics, and stocks/trade evidence without storing raw payloads or secrets. Live-source audit rows remain partial until the proof file exists.
+- 2026-06-11: Added `durable-daily-proof` and made durable duplicate-safe daily persistence a first-class goal-audit proof gate. The audit is stricter and now reports three missing external proof files plus two partial live-source rows.

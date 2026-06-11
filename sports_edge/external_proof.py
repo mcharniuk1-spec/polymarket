@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .goal_audit import build_goal_audit
-from .goal_audit import LIVE_SOURCE_PROOF_PATH, POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
+from .goal_audit import DURABLE_DAILY_PROOF_PATH, LIVE_SOURCE_PROOF_PATH, POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
 from .production_readiness import build_production_readiness
 from .state_store import configured_database_url
 
@@ -78,7 +78,8 @@ def _proof_items() -> list[dict[str, Any]]:
             "status": "approval_required",
             "whyRequired": "The daily analytical run must prove duplicate-safe durable persistence, not only dry-run JSON shape.",
             "safeDryRunCommand": "python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --dry-run",
-            "approvedCommand": "python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --force",
+            "approvedCommand": f"python3 -m sports_edge.cli durable-daily-proof --evidence-in <sanitized-daily-evidence.json> --proof-out {DURABLE_DAILY_PROOF_PATH}",
+            "proofPath": DURABLE_DAILY_PROOF_PATH,
             "requires": ["approved durable storage environment", "migration already applied"],
             "expectedEvidence": [
                 "ok=true",

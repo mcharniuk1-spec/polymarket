@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-from .goal_audit import LIVE_SOURCE_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
+from .goal_audit import DURABLE_DAILY_PROOF_PATH, LIVE_SOURCE_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
 
 
 REQUIRED_CRON_JOBS = ("collector_15m", "sofia_daily")
@@ -102,6 +102,102 @@ def validate_production_cron_proof(proof: dict[str, Any]) -> list[str]:
 def write_production_cron_proof(evidence: dict[str, Any], proof_out: str = PRODUCTION_CRON_PROOF_PATH, dry_run: bool = False) -> dict[str, Any]:
     proof = build_production_cron_proof(evidence)
     errors = validate_production_cron_proof(proof)
+    payload = {
+        "ok": not errors,
+        "dryRun": dry_run,
+        "researchOnly": True,
+        "paperTradingOnly": True,
+        "proofPath": proof_out,
+        "proof": proof,
+        "validationErrors": errors,
+    }
+    if errors:
+        payload["written"] = False
+        return payload
+    if dry_run:
+        payload["written"] = False
+        payload["reason"] = "dry_run"
+        return payload
+    proof_path = Path(proof_out)
+    proof_path.parent.mkdir(parents=True, exist_ok=True)
+    proof_path.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    payload["written"] = True
+    return payload
+
+
+def build_durable_daily_proof(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Build sanitized proof for durable daily write and duplicate-run protection."""
+    first_run = _dict_value(evidence, "firstRun")
+    duplicate_run = _dict_value(evidence, "duplicateRun")
+    storage = _dict_value(evidence, "storage")
+    checks = _dict_value(evidence, "checks")
+    proof_id_suffix = _safe_suffix(str(first_run.get("runId") or first_run.get("id") or first_run.get("idempotencyKey") or evidence.get("asOf") or "manual"))
+    return {
+        "proof_id": f"durable_daily_write_{proof_id_suffix}",
+        "researchOnly": True,
+        "paperTradingOnly": True,
+        "firstRun": _normalize_daily_run(first_run),
+        "duplicateRun": _normalize_daily_run(duplicate_run),
+        "storage": {
+            "durable": _bool_check(storage, "durable"),
+            "storageMode": storage.get("storageMode"),
+        },
+        "checks": {
+            "duplicate_write_protected": _bool_check(checks, "duplicate_write_protected"),
+            "dry_run": _negative_check(checks, "dry_run"),
+            "logs_contain_credentials": _negative_check(checks, "logs_contain_credentials"),
+            "wallet_or_order_execution_enabled": _negative_check(checks, "wallet_or_order_execution_enabled"),
+        },
+        "notes": [
+            "Generated from operator-approved sanitized durable daily evidence.",
+            "This artifact stores run status and idempotency proof only, not database URLs, credentials, cookies, or raw logs.",
+        ],
+    }
+
+
+def validate_durable_daily_proof(proof: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    first_run = _dict_value(proof, "firstRun")
+    duplicate_run = _dict_value(proof, "duplicateRun")
+    storage = _dict_value(proof, "storage")
+    checks = _dict_value(proof, "checks")
+    if not str(proof.get("proof_id", "")).startswith("durable_daily_write_"):
+        errors.append("proof_id must start with durable_daily_write_")
+    if proof.get("researchOnly") is not True:
+        errors.append("researchOnly must be true")
+    if proof.get("paperTradingOnly") is not True:
+        errors.append("paperTradingOnly must be true")
+    if first_run.get("sourceMode") != "fixture":
+        errors.append("firstRun.sourceMode must be fixture")
+    if first_run.get("status") != "success":
+        errors.append("firstRun.status must be success")
+    if first_run.get("storageWritten") is not True:
+        errors.append("firstRun.storageWritten must be true")
+    if not str(first_run.get("idempotencyKey", "")).startswith("daily:"):
+        errors.append("firstRun.idempotencyKey must start with daily:")
+    if duplicate_run.get("status") != "duplicate_skipped":
+        errors.append("duplicateRun.status must be duplicate_skipped")
+    if duplicate_run.get("storageWritten") is not False:
+        errors.append("duplicateRun.storageWritten must be false")
+    if duplicate_run.get("idempotencyKey") != first_run.get("idempotencyKey"):
+        errors.append("duplicateRun.idempotencyKey must match firstRun.idempotencyKey")
+    expected_checks = {
+        "duplicate_write_protected": True,
+        "dry_run": False,
+        "logs_contain_credentials": False,
+        "wallet_or_order_execution_enabled": False,
+    }
+    if storage.get("durable") is not True:
+        errors.append("storage.durable must be true")
+    for key, expected in expected_checks.items():
+        if checks.get(key) is not expected:
+            errors.append(f"checks.{key} must be {str(expected).lower()}")
+    return errors
+
+
+def write_durable_daily_proof(evidence: dict[str, Any], proof_out: str = DURABLE_DAILY_PROOF_PATH, dry_run: bool = False) -> dict[str, Any]:
+    proof = build_durable_daily_proof(evidence)
+    errors = validate_durable_daily_proof(proof)
     payload = {
         "ok": not errors,
         "dryRun": dry_run,
@@ -241,6 +337,16 @@ def _normalize_job(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
         "idempotencyKey": job.get("idempotencyKey"),
         "runId": job.get("runId"),
         "scheduledFor": job.get("scheduledFor"),
+    }
+
+
+def _normalize_daily_run(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "runId": row.get("runId") or row.get("id"),
+        "sourceMode": row.get("sourceMode"),
+        "status": row.get("status"),
+        "idempotencyKey": row.get("idempotencyKey"),
+        "storageWritten": row.get("storageWritten") is True,
     }
 
 

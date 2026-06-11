@@ -16,7 +16,7 @@ from sports_edge.agents import ACTIVE_CATEGORIES, MarketDataAgent, MultiAgentPip
 from sports_edge.app import health_payload
 from sports_edge.bet_research import BetResearchPlanner
 from sports_edge.codex_queue import drain_codex_queue, enqueue_codex_review, queue_summary
-from sports_edge.cli import run_live_source_proof, run_migrations, run_production_cron_proof
+from sports_edge.cli import run_durable_daily_proof, run_live_source_proof, run_migrations, run_production_cron_proof
 from sports_edge.dashboard_data import build_dashboard_payload, build_report_text
 from sports_edge.dashboard_api import (
     dashboard_contract_from_daily,
@@ -46,8 +46,10 @@ from sports_edge.orchestrator import CollectorRunConfig, DailyRunConfig, run_col
 from sports_edge.outcome_evaluator import evaluate_previous_paper_bets
 from sports_edge.production_readiness import build_production_readiness
 from sports_edge.proof_capture import (
+    build_durable_daily_proof,
     build_live_source_proof,
     build_production_cron_proof,
+    validate_durable_daily_proof,
     validate_live_source_proof,
     validate_production_cron_proof,
 )
@@ -571,6 +573,36 @@ def _valid_live_source_evidence() -> dict[str, object]:
     }
 
 
+def _valid_durable_daily_evidence() -> dict[str, object]:
+    return {
+        "asOf": "2026-06-10",
+        "firstRun": {
+            "runId": "daily-2026-06-10-first",
+            "sourceMode": "fixture",
+            "status": "success",
+            "idempotencyKey": "daily:2026-06-10",
+            "storageWritten": True,
+        },
+        "duplicateRun": {
+            "runId": "daily-2026-06-10-duplicate",
+            "sourceMode": "fixture",
+            "status": "duplicate_skipped",
+            "idempotencyKey": "daily:2026-06-10",
+            "storageWritten": False,
+        },
+        "storage": {
+            "durable": True,
+            "storageMode": "postgres",
+        },
+        "checks": {
+            "duplicate_write_protected": True,
+            "dry_run": False,
+            "logs_contain_credentials": False,
+            "wallet_or_order_execution_enabled": False,
+        },
+    }
+
+
 class MilestoneOneContractTests(unittest.TestCase):
     def test_daily_orchestrator_dry_run_validates_contract_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -865,6 +897,49 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("sofia_daily.observed must be true", payload["validationErrors"])
 
+    def test_durable_daily_proof_builder_requires_duplicate_skip(self) -> None:
+        proof = build_durable_daily_proof(_valid_durable_daily_evidence())
+        proof_text = json.dumps(proof, sort_keys=True)
+
+        self.assertEqual(validate_durable_daily_proof(proof), [])
+        self.assertTrue(goal_audit_module._durable_daily_proof_valid(proof))
+        self.assertEqual(proof["firstRun"]["idempotencyKey"], proof["duplicateRun"]["idempotencyKey"])
+        self.assertNotIn("DATABASE_URL", proof_text)
+        self.assertNotIn("secret", proof_text.lower())
+
+    def test_cli_durable_daily_proof_dry_run_does_not_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "daily-evidence.json"
+            proof_path = Path(tmpdir) / "daily-proof.json"
+            evidence_path.write_text(json.dumps(_valid_durable_daily_evidence()), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_durable_daily_proof(str(evidence_path), str(proof_path), dry_run=True)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["written"])
+        self.assertEqual(payload["reason"], "dry_run")
+        self.assertEqual(payload["validationErrors"], [])
+
+    def test_cli_durable_daily_proof_rejects_mismatched_duplicate_key(self) -> None:
+        evidence = _valid_durable_daily_evidence()
+        evidence["duplicateRun"]["idempotencyKey"] = "daily:2026-06-11"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "daily-evidence.json"
+            proof_path = Path(tmpdir) / "daily-proof.json"
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_durable_daily_proof(str(evidence_path), str(proof_path), dry_run=False)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 1)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["ok"])
+        self.assertIn("duplicateRun.idempotencyKey must match firstRun.idempotencyKey", payload["validationErrors"])
+
     def test_live_source_proof_builder_requires_all_active_categories(self) -> None:
         proof = build_live_source_proof(_valid_live_source_evidence())
         proof_text = json.dumps(proof, sort_keys=True)
@@ -933,9 +1008,11 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertEqual(proof_paths["postgres_apply_proof"], goal_audit_module.POSTGRES_PROOF_PATH)
         self.assertEqual(proof_paths["production_cron_run_proof"], goal_audit_module.PRODUCTION_CRON_PROOF_PATH)
         self.assertEqual(proof_paths["approved_live_source_validation"], goal_audit_module.LIVE_SOURCE_PROOF_PATH)
+        self.assertEqual(proof_paths["durable_daily_write_proof"], goal_audit_module.DURABLE_DAILY_PROOF_PATH)
         approved_commands = {row["id"]: row.get("approvedCommand", "") for row in payload["proofItems"]}
         self.assertIn("production-cron-proof", approved_commands["production_cron_run_proof"])
         self.assertIn("live-source-proof", approved_commands["approved_live_source_validation"])
+        self.assertIn("durable-daily-proof", approved_commands["durable_daily_write_proof"])
         self.assertTrue(all(row["status"] == "approval_required" for row in payload["proofItems"]))
 
     def test_cli_external_proof_bundle_outputs_no_secret_values(self) -> None:
@@ -1567,13 +1644,14 @@ class OutcomeEvaluationTests(unittest.TestCase):
         statuses = {row["id"]: row["status"] for row in payload["requirements"]}
         self.assertEqual(payload["summary"]["proven"], 11)
         self.assertEqual(payload["summary"]["partial"], 2)
-        self.assertEqual(payload["summary"]["missing"], 2)
+        self.assertEqual(payload["summary"]["missing"], 3)
         self.assertEqual(statuses["paper_only_safety"], "proven")
         self.assertEqual(statuses["daily_run_order"], "proven")
         self.assertEqual(statuses["dashboard_api"], "proven")
         self.assertEqual(statuses["live_official_adapters"], "partial")
         self.assertEqual(statuses["live_resolution_proof"], "partial")
         self.assertEqual(statuses["postgres_apply_proof"], "missing")
+        self.assertEqual(statuses["durable_daily_write_proof"], "missing")
         self.assertEqual(statuses["deployed_cron_proof"], "missing")
         self.assertEqual(statuses["deployed_dashboard_proof"], "proven")
         for row in payload["requirements"]:
@@ -1599,7 +1677,27 @@ class OutcomeEvaluationTests(unittest.TestCase):
         self.assertEqual(statuses["postgres_apply_proof"], "missing")
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["summary"]["proven"], 12)
-        self.assertEqual(payload["summary"]["missing"], 1)
+        self.assertEqual(payload["summary"]["missing"], 2)
+
+    def test_goal_audit_accepts_valid_durable_daily_proof_file(self) -> None:
+        valid_daily_proof = build_durable_daily_proof(_valid_durable_daily_evidence())
+        original_read_json = goal_audit_module._read_json
+
+        def fake_read_json(path: str) -> dict[str, object]:
+            if path == "docs/ai/proofs/20260611_durable_daily_write.json":
+                return valid_daily_proof
+            return original_read_json(path)
+
+        with mock.patch("sports_edge.goal_audit._read_json", side_effect=fake_read_json):
+            payload = build_goal_audit()
+
+        statuses = {row["id"]: row["status"] for row in payload["requirements"]}
+        self.assertEqual(statuses["durable_daily_write_proof"], "proven")
+        self.assertEqual(statuses["postgres_apply_proof"], "missing")
+        self.assertEqual(statuses["deployed_cron_proof"], "missing")
+        self.assertFalse(payload["complete"])
+        self.assertEqual(payload["summary"]["proven"], 12)
+        self.assertEqual(payload["summary"]["missing"], 2)
 
     def test_goal_audit_accepts_valid_live_source_proof_file(self) -> None:
         valid_live_source_proof = build_live_source_proof(_valid_live_source_evidence())
@@ -1621,7 +1719,7 @@ class OutcomeEvaluationTests(unittest.TestCase):
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["summary"]["proven"], 13)
         self.assertEqual(payload["summary"]["partial"], 0)
-        self.assertEqual(payload["summary"]["missing"], 2)
+        self.assertEqual(payload["summary"]["missing"], 3)
 
     def test_goal_audit_accepts_valid_postgres_migration_proof_file(self) -> None:
         valid_postgres_proof = {
@@ -1658,7 +1756,7 @@ class OutcomeEvaluationTests(unittest.TestCase):
         self.assertEqual(statuses["deployed_cron_proof"], "missing")
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["summary"]["proven"], 12)
-        self.assertEqual(payload["summary"]["missing"], 1)
+        self.assertEqual(payload["summary"]["missing"], 2)
 
 
 def _previous_daily_paper_bet_payload() -> dict[str, object]:

@@ -251,6 +251,15 @@ python3 -m sports_edge.cli migrate --proof-out docs/ai/proofs/20260611_postgres_
 
 After an approved real migration, `--proof-out` saves only sanitized proof metadata to `docs/ai/proofs/20260611_postgres_migration_proof.json`. The goal audit accepts it only when it proves `researchOnly=true`, `paperTradingOnly=true`, `migration.ok=true`, `migration.applied=true`, durable storage, all 13 milestone tables verified, `missingTables=[]`, no credential values in logs, and no wallet/order execution enabled.
 
+Durable daily write proof requires an approved non-dry-run fixture daily write and a second duplicate run using the same idempotency key. Save only sanitized run status, idempotency, and storage-mode evidence:
+
+```bash
+python3 -m sports_edge.cli durable-daily-proof --evidence-in sanitized-daily-evidence.json --dry-run
+python3 -m sports_edge.cli durable-daily-proof --evidence-in sanitized-daily-evidence.json --proof-out docs/ai/proofs/20260611_durable_daily_write.json
+```
+
+The proof command requires `firstRun.status=success`, `firstRun.storageWritten=true`, a `daily:` idempotency key, `duplicateRun.status=duplicate_skipped`, `duplicateRun.storageWritten=false`, matching idempotency keys, durable storage, no dry-run, no credential exposure, and no wallet/order execution.
+
 Production cron proof is also file-gated. After approved GitHub Actions or Vercel cron review, create an operator-sanitized evidence JSON that includes both `scheduledJobs.collector_15m` and `scheduledJobs.sofia_daily`, each with `observed=true`, `status=success` or `duplicate_skipped`, and `sourceMode=live`. Then generate the audit proof without fetching logs or storing credentials:
 
 ```bash
@@ -280,6 +289,7 @@ python3 -m sports_edge.cli migrate --dry-run
 python3 -m sports_edge.cli goal-audit
 python3 -m sports_edge.cli production-readiness
 python3 -m sports_edge.cli external-proof-bundle --as-of 2026-06-10
+python3 -m sports_edge.cli durable-daily-proof --evidence-in sanitized-daily-evidence.json --dry-run
 python3 -m sports_edge.cli production-cron-proof --evidence-in sanitized-cron-evidence.json --dry-run
 python3 -m sports_edge.cli live-source-proof --evidence-in sanitized-live-source-evidence.json --dry-run
 python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --dry-run
