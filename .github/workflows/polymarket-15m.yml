@@ -58,13 +58,12 @@ jobs:
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
           POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL }}
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL || 'https://polymarket-research-dashboard.vercel.app' }}
         run: |
           set -euo pipefail
           HAS_LOCAL_DURABLE=false
-          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
+          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}" ]; then
             HAS_LOCAL_DURABLE=true
           fi
           REMOTE_CRON_BASE="${VERCEL_CRON_URL%/}"
@@ -73,7 +72,7 @@ jobs:
             HAS_REMOTE_CRON=true
           fi
           if [ "${HAS_REMOTE_CRON}" = "false" ] && [ "${HAS_LOCAL_DURABLE}" = "false" ]; then
-            echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+            echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL in GitHub Actions secrets. Vercel Blob is not used while transfer limits are constrained."
             exit 1
           fi
           echo "scheduled_execution_credentials_ok"
@@ -84,8 +83,6 @@ jobs:
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
           POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL }}
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-          BLOB_STORE_ID: ${{ secrets.BLOB_STORE_ID }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL || 'https://polymarket-research-dashboard.vercel.app' }}
           POLYMARKET_STATE_PREFIX: ${{ vars.POLYMARKET_STATE_PREFIX || 'polymarket/state' }}
@@ -96,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           HAS_LOCAL_DURABLE=false
-          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
+          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}" ]; then
             HAS_LOCAL_DURABLE=true
           fi
           REMOTE_CRON_BASE="${VERCEL_CRON_URL%/}"
@@ -117,7 +114,7 @@ jobs:
                 python3 -m sports_edge.cli run-daily --source live --target-count 30 | tee response.json
                 exit 0
               fi
-              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL in GitHub Actions secrets. Vercel Blob is not used while transfer limits are constrained."
               exit 1
             fi
 
@@ -132,7 +129,7 @@ jobs:
                 python3 -m sports_edge.cli run-collector --source live --target-count "${TARGET_COUNT}" | tee response.json
                 exit 0
               fi
-              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL in GitHub Actions secrets. Vercel Blob is not used while transfer limits are constrained."
               exit 1
             fi
           fi
@@ -247,7 +244,8 @@ jobs:
               raise SystemExit(
                   "durable storage was not confirmed. Configure one of "
                   "DATABASE_URL/POSTGRES_URL/POSTGRES_PRISMA_URL/POSTGRES_URL_NON_POOLING "
-                  "or BLOB_READ_WRITE_TOKEN as a GitHub Actions secret. "
+                  "as a GitHub Actions secret. Vercel Blob is intentionally disabled "
+                  "while Blob transfer limits are constrained. "
                   f"Payload: {payload}"
               )
           print(json.dumps({

@@ -87,7 +87,7 @@ Legacy `/api/summary`, `/api/forecasts`, and `/api/odds-history` routes are scop
 - `sports_edge.intelligence` - post-ingestion intelligence cycle, source reliability scoring, deterministic fallback analysis, and optional local-only Codex CLI wrapper.
 - `sports_edge.codex_queue` - chronological local queue for replaying Codex review after offline 15-minute cycles.
 - `sports_edge.managed_pipeline` - durable 15-minute live collection, chronological agent replay, online logistic model state, and correlation matrices.
-- `sports_edge.state_store` - JSON persistence with local development storage and optional Vercel Blob mirroring.
+- `sports_edge.state_store` - JSON persistence with local development storage, preferred Postgres durability, and opt-in Vercel Blob mirroring.
 
 ## Intelligence Layer
 
@@ -130,7 +130,7 @@ Vercel does not use local Codex auth. On Vercel, `/api/intelligence` displays st
 - `/api/cron-collector` - deployable read-only collector orchestration endpoint. The 15-minute schedule is kept on GitHub Actions because the current Vercel Hobby account rejects sub-daily cron expressions.
 - `/api/cron-daily` - daily analytical run, scheduled on Vercel at both UTC windows that cover 09:00 Europe/Sofia across DST.
 
-These routes fail closed unless durable storage is configured through Postgres or Vercel Blob. Set `CRON_SECRET` in Vercel to have Vercel send the bearer authorization header automatically for cron invocations.
+These routes fail closed unless durable storage is configured through Postgres. Set `CRON_SECRET` in Vercel to have Vercel send the bearer authorization header automatically for cron invocations. Vercel Blob mirroring is disabled by default to avoid free-tier transfer-limit pauses.
 
 The repository keeps more API compatibility shims than Vercel Hobby can deploy as separate Serverless Functions. `.vercelignore` limits the production deploy surface to the essential dashboard, health, run-status, report, refresh, and cron functions; source files remain in the repo for local testing and future Pro-plan consolidation.
 
@@ -169,7 +169,7 @@ python3 -m sports_edge.cli run-collector --source live --target-count "$TARGET_C
 
 Required production secrets:
 
-- GitHub: `VERCEL_CRON_URL`, `CRON_SECRET` for scheduled calls into deployed cron routes; optional `DATABASE_URL`/`POSTGRES_URL`/`BLOB_READ_WRITE_TOKEN` only if GitHub should run durable local writes directly.
+- GitHub: `VERCEL_CRON_URL`, `CRON_SECRET` for scheduled calls into deployed cron routes; optional `DATABASE_URL`/`POSTGRES_URL` only if GitHub should run durable local writes directly.
 - Vercel: `CRON_SECRET`, `DATABASE_URL` or `POSTGRES_URL`
 
 PostgreSQL is the preferred durable store. When a database URL is configured, each run writes both JSON state and queryable relational projections:
@@ -179,7 +179,7 @@ PostgreSQL is the preferred durable store. When a database URL is configured, ea
 - `market_news_items` - timestamped source links/reviews attached to each market snapshot.
 - `model_metric_snapshots` - model health snapshots such as Brier/calibration inputs.
 
-`BLOB_READ_WRITE_TOKEN` remains supported as a fallback state mirror, but it is no longer the recommended production database.
+`BLOB_READ_WRITE_TOKEN` remains supported only as an explicit opt-in state mirror by setting `POLYMARKET_ENABLE_BLOB=1`, but it is disabled by default and is not the recommended production database.
 
 New dashboard/API state:
 

@@ -25,7 +25,7 @@
   "functions": {
     "api/*.py": {
       "maxDuration": 30,
-      "excludeFiles": "{tests/**,reports/**,graphify-out/**,docs/ai/vault_bootstrap/**,reference/**,web/**,data/generated/intelligence/codex_queue/**,**/__pycache__/**}"
+      "excludeFiles": "{tests/**,reports/**,graphify-out/**,docs/ai/vault_bootstrap/**,reference/**,web/**,data/generated/full_scan/**,data/generated/production_state/**,data/generated/intelligence/codex_queue/**,**/__pycache__/**}"
     }
   },
   "crons": [

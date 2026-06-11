@@ -1,12 +1,10 @@
-import os
-
 from sports_edge.orchestrator import CollectorRunConfig, run_collector
-from sports_edge.state_store import configured_database_url
+from sports_edge.state_store import durable_storage_configured
 from sports_edge.vercel_api import JsonHandler, cron_authorized, query_int, query_value
 
 
 def _durable_storage_configured() -> bool:
-    return bool(configured_database_url() or os.environ.get("BLOB_READ_WRITE_TOKEN"))
+    return durable_storage_configured()
 
 
 class handler(JsonHandler):

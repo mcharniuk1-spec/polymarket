@@ -115,7 +115,6 @@ The default production scheduler is GitHub Actions because it can run the manage
 Configure at least one durable storage secret in GitHub Actions:
 
 - `DATABASE_URL`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, or `POSTGRES_URL_NON_POOLING`
-- or `BLOB_READ_WRITE_TOKEN` plus optional `BLOB_STORE_ID`
 
 The workflow runs:
 
@@ -138,7 +137,7 @@ PostgreSQL is the preferred durable state backend. With a database URL set, the 
 - `market_news_items` for attached source reviews and URLs.
 - `model_metric_snapshots` for Brier/calibration/model-health checkpoints.
 
-`BLOB_READ_WRITE_TOKEN` is still supported as a fallback JSON mirror, but it does not provide the same queryable bet history.
+`BLOB_READ_WRITE_TOKEN` is still supported only when `POLYMARKET_ENABLE_BLOB=1` is explicitly set, but Blob mirroring is disabled by default because Blob transfer limits can pause the whole store. It does not provide the same queryable bet history as Postgres.
 
 Local fallback remains available:
 
@@ -148,7 +147,7 @@ python3 -m sports_edge.cli run-agent-replay
 python3 -m sports_edge.cli run-ml-update --global-review
 ```
 
-Important Vercel limitation: without PostgreSQL, Vercel Blob, or another durable external store, Vercel cannot reliably persist a cross-run queue from serverless functions. In that case the endpoint returns `codexQueue.status = emitted_not_persisted` with a queue item in the JSON response. Configure PostgreSQL for reliable 15-minute run history and dashboard state.
+Important Vercel limitation: without PostgreSQL or another approved durable external store, Vercel cannot reliably persist a cross-run queue from serverless functions. In that case the endpoint returns `codexQueue.status = emitted_not_persisted` with a queue item in the JSON response. Configure PostgreSQL for reliable 15-minute run history and dashboard state.
 
 ## Storage
 

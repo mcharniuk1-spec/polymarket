@@ -116,7 +116,6 @@ def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
         "POSTGRES_URL",
         "POSTGRES_PRISMA_URL",
         "POSTGRES_URL_NON_POOLING",
-        "BLOB_READ_WRITE_TOKEN",
     ]
     return _check(
         "durable_storage_gate",
@@ -125,7 +124,7 @@ def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
         and "Missing scheduled cron execution credentials" in workflow,
         "Workflow fails closed when neither deployed cron auth nor local durable storage is configured.",
         {"requiredEnvNames": required},
-        "Keep scheduled writes behind deployed cron auth or durable storage configuration.",
+        "Keep scheduled writes behind deployed cron auth or Postgres durable storage configuration.",
     )
 
 

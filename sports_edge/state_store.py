@@ -25,13 +25,32 @@ def configured_database_url() -> str | None:
     return None
 
 
+def blob_storage_enabled() -> bool:
+    """Return true only when Blob state mirroring is explicitly opted in.
+
+    Vercel Blob transfer can pause the whole store on the free tier. Keeping
+    Blob opt-in prevents a configured token from silently turning every
+    dashboard/API read into Blob transfer while preserving Postgres and local
+    file operation.
+    """
+
+    if not os.environ.get("BLOB_READ_WRITE_TOKEN"):
+        return False
+    value = os.environ.get("POLYMARKET_ENABLE_BLOB", "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def durable_storage_configured() -> bool:
+    return bool(configured_database_url() or blob_storage_enabled())
+
+
 class JsonStateStore:
     """Small JSON state store with local fallback and optional Vercel Blob mirroring."""
 
     def __init__(self, local_root: Path | str = LOCAL_STATE_DIR, prefix: str | None = None) -> None:
         self.local_root = Path(local_root)
         self.prefix = (prefix or os.environ.get("POLYMARKET_STATE_PREFIX") or DEFAULT_PREFIX).strip("/")
-        self.token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+        self.token = os.environ.get("BLOB_READ_WRITE_TOKEN") if blob_storage_enabled() else None
         self.local_enabled = not (os.environ.get("VERCEL") or str(REPO_ROOT).startswith("/var/task"))
         self.storage_mode = "vercel_blob" if self.token else "local_file"
 

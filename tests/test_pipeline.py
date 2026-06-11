@@ -58,7 +58,7 @@ from sports_edge.risk_control import RESEARCH_ONLY_MODE, RiskControl
 from sports_edge.safety import SafetyGateError, assert_paper_trading_only
 from sports_edge.schemas import DecisionNote, KnowledgeLesson, MODEL_FAMILIES, PaperBet, ResolvedOutcome, stable_id
 from sports_edge.source_registry import SourceRegistry
-from sports_edge.state_store import JsonStateStore, PostgresStateStore
+from sports_edge.state_store import JsonStateStore, PostgresStateStore, blob_storage_enabled, durable_storage_configured
 from sports_edge.vercel_api import cron_authorized
 
 
@@ -742,8 +742,20 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertIn("run-daily --source fixture --target-count 30 --dry-run", workflow)
         self.assertIn('if [ "${EVENT_NAME}" = "schedule" ]; then', workflow)
         self.assertIn("Missing scheduled cron execution credentials", workflow)
+        self.assertIn("Vercel Blob is not used while transfer limits are constrained", workflow)
+        self.assertNotIn("secrets.BLOB_READ_WRITE_TOKEN", workflow)
         self.assertIn("non_scheduled_fixture_dry_run", workflow)
         self.assertIn("dailyRunHourEuropeSofia", workflow)
+
+    def test_vercel_ignore_excludes_heavy_generated_artifacts(self) -> None:
+        ignored = (ROOT / ".vercelignore").read_text(encoding="utf-8")
+        self.assertIn("data/generated/full_scan/**", ignored)
+        self.assertIn("data/generated/production_state/**", ignored)
+        self.assertIn("reports/**", ignored)
+        vercel = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))
+        exclude = vercel["functions"]["api/*.py"]["excludeFiles"]
+        self.assertIn("data/generated/full_scan/**", exclude)
+        self.assertIn("data/generated/production_state/**", exclude)
 
     def test_production_readiness_contract_validates_local_deploy_surface(self) -> None:
         payload = build_production_readiness()
@@ -1523,6 +1535,25 @@ class DataAgentAndDashboardApiTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["research_only"])
         self.assertFalse(payload["safety"]["orderExecution"])
+
+    def test_blob_storage_requires_explicit_opt_in(self) -> None:
+        with mock.patch.dict(os.environ, {"BLOB_READ_WRITE_TOKEN": "vercel_blob_rw_test_store_fake"}, clear=True):
+            self.assertFalse(blob_storage_enabled())
+            self.assertFalse(durable_storage_configured())
+            store = JsonStateStore(local_root=Path("/tmp/polymarket-test-state"))
+            self.assertIsNone(store.token)
+            self.assertEqual(store.storage_mode, "local_file")
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                "BLOB_READ_WRITE_TOKEN": "vercel_blob_rw_test_store_fake",
+                "POLYMARKET_ENABLE_BLOB": "1",
+            },
+            clear=True,
+        ):
+            self.assertTrue(blob_storage_enabled())
+            self.assertTrue(durable_storage_configured())
 
 
 class OutcomeEvaluationTests(unittest.TestCase):

@@ -14,3 +14,10 @@ api/runs/history.py
 api/sources.py
 api/status.py
 api/warnings.py
+data/generated/full_scan/**
+data/generated/production_state/**
+data/generated/intelligence/codex_queue/**
+reports/**
+docs/ai/vault_bootstrap/**
+graphify-out/**
+reference/**
