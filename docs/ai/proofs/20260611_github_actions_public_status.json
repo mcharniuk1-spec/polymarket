@@ -39,5 +39,19 @@
     "Push and manual runs without durable storage now execute `run-daily --source fixture --target-count 30 --dry-run` and validate that no state was written.",
     "Production-readiness now checks the non-scheduled dry-run fallback explicitly."
   ],
+  "post_fix_verification": {
+    "run_id": 27326320766,
+    "event": "push",
+    "head_sha": "3b92b1892ebe870941711fad4bb95db1aa7908f5",
+    "status": "completed",
+    "conclusion": "success",
+    "job_id": 80728152175,
+    "successful_steps": [
+      "Validate source registry",
+      "Run managed research cycle",
+      "Validate managed cycle result",
+      "Vercel dashboard smoke check"
+    ]
+  },
   "remaining_gap": "This artifact does not prove a successful scheduled production job. Completion still requires a successful GitHub Actions or Vercel scheduled run log after the fix is pushed and durable storage is available."
 }

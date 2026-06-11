@@ -26,6 +26,8 @@ The previous workflow design was too strict for push-triggered CI: it required d
 - `python3 -m py_compile sports_edge/*.py api/*.py scripts/*.py` - passed.
 - `python3 -m sports_edge.cli production-readiness` - passed, including `non_scheduled_dry_run_fallback`.
 - `python3 -m sports_edge.cli goal-audit` - passed with `complete=false`, 11 proven, 2 partial, 2 missing.
+- Post-push public GitHub Actions run `27326320766` for commit `3b92b18` completed successfully.
+- Public job metadata for job `80728152175` showed `Validate source registry`, `Run managed research cycle`, `Validate managed cycle result`, and `Vercel dashboard smoke check` all succeeded.
 
 ## Files Changed
 - `.github/workflows/polymarket-15m.yml`
@@ -36,6 +38,5 @@ The previous workflow design was too strict for push-triggered CI: it required d
 - `docs/ai/vault_bootstrap/wikillm/polymarket/log.md`
 
 ## Next Steps
-- Push the workflow fix and inspect the next push run through the public Actions API.
 - Configure approved durable storage secrets before expecting scheduled production runs to succeed.
 - After a scheduled run fires, capture the cron run evidence and rerun `python3 -m sports_edge.cli goal-audit`.
