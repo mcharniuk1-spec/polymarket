@@ -3,6 +3,8 @@ from __future__ import annotations
 from statistics import mean
 from typing import Any
 
+from .external_sources import build_external_data_readiness
+from .research_scope import ACTIVE_CATEGORIES, AGENT_CONTRACT, category_label
 from .source_registry import SourceRecord, SourceRegistry
 
 
@@ -30,6 +32,9 @@ SOURCE_URLS = {
     "sports-football-data-org": "https://docs.football-data.org/general/v4/index.html",
     "sports-openligadb": "https://openligadb.de/",
     "sports-mlb-stats-api": "https://statsapi.mlb.com/api/v1/schedule?sportId=1",
+    "sports-nba-official-stats": "https://www.nba.com/stats",
+    "sports-nhl-web-api": "https://api-web.nhle.com/v1/standings/now",
+    "sports-official-nfl-stats": "https://www.nfl.com/stats/",
     "sports-balldontlie": "https://www.balldontlie.io/docs/",
     "sports-pandascore-esports": "https://developers.pandascore.co/docs",
     "sports-tennis-official-rankings-results": "https://www.atptour.com/en/rankings/singles",
@@ -91,8 +96,14 @@ def enrich_multi_agent_payload(payload: dict[str, Any]) -> dict[str, Any]:
     recommendations = payload.get("recommendations", [])
     metrics = payload.get("metrics", {})
     payload["portfolio_rules"] = _portfolio_rules(metrics)
+    payload["agent_contract"] = AGENT_CONTRACT
     payload["collection_plan"] = _collection_plan(registry)
     payload["source_reviews_by_category"] = _source_reviews_by_category(registry)
+    payload["external_data_readiness"] = build_external_data_readiness(
+        [item.get("candidate", {}) for item in recommendations],
+        registry=registry,
+        decision_at=payload.get("created_at", ""),
+    )
     payload["event_groups"] = _event_groups(recommendations)
     payload["news_influence_graph"] = _news_influence_graph(recommendations)
     payload["bet_detail_records"] = [
@@ -173,7 +184,7 @@ def _portfolio_rules(metrics: dict[str, Any]) -> dict[str, Any]:
 
 def _collection_plan(registry: SourceRegistry) -> dict[str, Any]:
     rows = []
-    for source in registry.sources:
+    for source in registry.active_sources():
         scripted = source.allowed_by_default and source.access == "public-no-key"
         rows.append(
             {
@@ -197,7 +208,6 @@ def _collection_plan(registry: SourceRegistry) -> dict[str, Any]:
 
 
 def _source_reviews_by_category(registry: SourceRegistry) -> dict[str, list[dict[str, Any]]]:
-    categories = ("sports", "geopolitics", "crypto", "macro", "weather", "culture")
     return {
         category: [
             {
@@ -209,7 +219,7 @@ def _source_reviews_by_category(registry: SourceRegistry) -> dict[str, list[dict
             }
             for source in registry.for_category(category, include_global=True, include_polymarket=True, allowed_only=False)[:14]
         ]
-        for category in categories
+        for category in ACTIVE_CATEGORIES
     }
 
 

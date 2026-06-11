@@ -8,14 +8,18 @@ tags:
 
 # Polymarket Project Goal
 
-Build a research-only multi-category Polymarket analytics MVP with odds modeling, market/news context, category experts, paper bankroll decisions, and learning dashboards.
+Build a research-only Polymarket analytics MVP for macroeconomics, politics, and stocks/trade-related markets with odds modeling, market/news context, paper bankroll decisions, and learning dashboards.
 
 ## Scope
 
 - Public/read-only Polymarket market discovery where available.
+- Active sections only: macroeconomics, politics, and stocks/trade-related markets.
 - Odds and price-history modeling.
 - Market and news context by category.
-- Category expert scoring for sports, geopolitics, crypto, macro, weather, and culture.
+- Three user-facing agents:
+  - Context Agent: broad daily context first, then candidate-specific evidence.
+  - Data Agent: market data, order books, spreads, liquidity, volume, history, rules, resolution criteria, time to resolution, and external numeric readiness.
+  - Decision Agent: reject/watchlist/paper-bet decisions, portfolio risk, reasoning records, and learning updates.
 - Paper-only decision and bankroll management.
 - Final synthesis and top-10 bet ranking.
 - Local dashboard with forecasts, confidence scores, EV estimates, odds history, paper-trading decisions, win/loss rate, calibration metrics, simulated ROI, drawdown, agent performance, and mistake reviews.

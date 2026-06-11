@@ -6,7 +6,8 @@ on:
       - main
   schedule:
     - cron: "*/15 * * * *"
-    - cron: "7 2 * * *"
+    - cron: "0 6 * * *"
+    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       target_count:
@@ -69,13 +70,18 @@ jobs:
             exit 1
           fi
 
-          GLOBAL_REVIEW="${GLOBAL_REVIEW_INPUT}"
-          if [ "${SCHEDULE}" = "7 2 * * *" ]; then
-            GLOBAL_REVIEW="true"
-            TARGET_COUNT="200"
+          if [ "${SCHEDULE}" = "0 6 * * *" ] || [ "${SCHEDULE}" = "0 7 * * *" ]; then
+            python3 -m sports_edge.cli run-daily --source live --target-count 30 | tee response.json
+            exit 0
           fi
 
-          COMMAND=(python3 -m sports_edge.cli run-managed-cycle --source live --cycle-type scheduled_15m --target-count "${TARGET_COUNT}")
+          if [ "${SCHEDULE}" = "*/15 * * * *" ]; then
+            python3 -m sports_edge.cli run-collector --source live --target-count "${TARGET_COUNT}" | tee response.json
+            exit 0
+          fi
+
+          GLOBAL_REVIEW="${GLOBAL_REVIEW_INPUT}"
+          COMMAND=(python3 -m sports_edge.cli run-managed-cycle --source live --cycle-type manual --target-count "${TARGET_COUNT}")
           if [ "${GLOBAL_REVIEW}" = "true" ]; then
             COMMAND+=(--global-review)
           fi
@@ -89,10 +95,60 @@ jobs:
           from pathlib import Path
 
           payload = json.loads(Path("response.json").read_text())
+          if payload.get("collector") is True:
+              required = {
+                  "ok": True,
+                  "researchOnly": True,
+                  "paperTradingOnly": True,
+                  "sourceMode": "live",
+              }
+              for key, expected in required.items():
+                  actual = payload.get(key)
+                  if actual != expected:
+                      raise SystemExit(f"{key} expected {expected!r}, got {actual!r}: {payload}")
+              status = payload.get("cronRun", {}).get("status")
+              if status not in {"success", "duplicate_skipped"}:
+                  raise SystemExit(f"bad collector status: {payload}")
+              storage = payload.get("storage", {})
+              if not (storage.get("written") is True or payload.get("duplicate") is True):
+                  raise SystemExit(f"collector did not write and was not a duplicate: {payload}")
+              print(json.dumps({
+                  "run_id": payload.get("cronRun", {}).get("run_id"),
+                  "status": status,
+                  "idempotency_key": payload.get("idempotencyKey"),
+                  "counts": payload.get("cronRun", {}).get("counts", {}),
+              }, indent=2, sort_keys=True))
+              raise SystemExit(0)
+
+          if payload.get("dailyRunHourEuropeSofia") == 9:
+              required = {
+                  "ok": True,
+                  "researchOnly": True,
+                  "paperTradingOnly": True,
+                  "sourceMode": "live",
+              }
+              for key, expected in required.items():
+                  actual = payload.get(key)
+                  if actual != expected:
+                      raise SystemExit(f"{key} expected {expected!r}, got {actual!r}: {payload}")
+              status = payload.get("cronRun", {}).get("status")
+              if status not in {"success", "duplicate_skipped"}:
+                  raise SystemExit(f"bad daily status: {payload}")
+              storage = payload.get("storage", {})
+              if not (storage.get("written") is True or payload.get("duplicate") is True):
+                  raise SystemExit(f"daily did not write and was not a duplicate: {payload}")
+              print(json.dumps({
+                  "run_id": payload.get("cronRun", {}).get("run_id"),
+                  "status": status,
+                  "idempotency_key": payload.get("idempotencyKey"),
+                  "counts": payload.get("cronRun", {}).get("counts", {}),
+              }, indent=2, sort_keys=True))
+              raise SystemExit(0)
+
           required = {
               "ok": True,
               "sourceMode": "live",
-              "cycleType": "scheduled_15m",
+              "cycleType": "manual",
               "research_only": True,
               "live_data_confirmed": True,
           }

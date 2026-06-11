@@ -2,17 +2,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from .agents import ACTIVE_CATEGORIES, MultiAgentPipeline
 from .backtesting import Backtester
 from .bet_research import BetResearchPlanner
 from .codex_queue import drain_codex_queue, queue_summary
+from .dashboard_data import build_dashboard_payload
+from .external_proof import build_external_proof_bundle
 from .full_scan import run_full_scan
+from .goal_audit import build_goal_audit
 from .intelligence import run_intelligence_cycle
 from .managed_pipeline import load_correlations, load_model_state, load_run_history, run_agent_replay, run_managed_cycle, run_ml_update
+from .migrations import MILESTONE1_MIGRATION_ID, MILESTONE1_POSTGRES_SQL
+from .orchestrator import CollectorRunConfig, DailyRunConfig, run_collector, run_daily_analysis
+from .production_readiness import build_production_readiness
 from .reporting import PerformanceReporter
 from .source_registry import SourceRegistry
+from .state_store import PostgresStateStore, configured_database_url
 
 
 def run_demo() -> int:
@@ -103,12 +111,70 @@ def run_codex_queue(limit: int, summary_only: bool) -> int:
     return 0 if payload.get("status", "success") in {"success", "partial", "empty", "skipped"} else 1
 
 
-def run_managed(source: str, target_count: int, cycle_type: str, global_review: bool) -> int:
+def run_managed(source: str, target_count: int, cycle_type: str, global_review: bool, dry_run: bool) -> int:
+    if dry_run:
+        if source != "fixture":
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "dryRun": True,
+                        "reason": "Milestone 1 managed dry-run only supports fixture source to avoid live API calls.",
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 2
+        dashboard_payload = build_dashboard_payload(source_mode=source, target_count=target_count, use_cache=False)
+        payload = {
+            "ok": True,
+            "dryRun": True,
+            "research_only": True,
+            "paper_trading_only": True,
+            "cycleType": cycle_type,
+            "sourceMode": source,
+            "targetCount": target_count,
+            "globalReview": global_review,
+            "candidate_count": dashboard_payload["multi_agent"]["metrics"]["candidate_count"],
+            "paper_bet_count": dashboard_payload["multi_agent"]["metrics"]["paper_bet_count"],
+            "storage": {"written": False, "reason": "dry_run"},
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     payload = run_managed_cycle(
         cycle_type=cycle_type,
         source_mode=source,
         target_count=target_count,
         global_review=global_review,
+    )
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
+def run_daily(source: str, target_count: int, dry_run: bool, as_of: str | None, force: bool) -> int:
+    payload = run_daily_analysis(
+        DailyRunConfig(
+            source_mode=source,
+            target_count=target_count,
+            dry_run=dry_run,
+            as_of=as_of,
+            force=force,
+        )
+    )
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
+def run_collector_cli(source: str, target_count: int, dry_run: bool, as_of: str | None, force: bool) -> int:
+    payload = run_collector(
+        CollectorRunConfig(
+            source_mode=source,
+            target_count=target_count,
+            dry_run=dry_run,
+            as_of=as_of,
+            force=force,
+        )
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if payload.get("ok") else 1
@@ -126,6 +192,7 @@ def run_full_scan_cli(
     history_hours: int,
     history_fidelity: int,
     no_intelligence: bool,
+    require_approved_top_limit: bool,
 ) -> int:
     payload = run_full_scan(
         max_pages=max_pages,
@@ -142,6 +209,8 @@ def run_full_scan_cli(
         run_intelligence=not no_intelligence,
     )
     print(json.dumps({"ok": True, **payload["summary"], "artifactPaths": payload.get("artifactPaths", {})}, indent=2, sort_keys=True))
+    if require_approved_top_limit and not payload["summary"].get("topRecommendationTargetMet"):
+        return 2
     return 0
 
 
@@ -167,13 +236,74 @@ def show_managed_state(kind: str) -> int:
     return 0
 
 
+def run_migrations(dry_run: bool) -> int:
+    tables = sorted(set(re.findall(r"create table if not exists\s+([a-z_]+)", MILESTONE1_POSTGRES_SQL, flags=re.IGNORECASE)))
+    indexes = sorted(set(re.findall(r"create (?:unique )?index if not exists\s+([a-z_]+)", MILESTONE1_POSTGRES_SQL, flags=re.IGNORECASE)))
+    payload = {
+        "ok": True,
+        "dryRun": dry_run,
+        "migrationId": MILESTONE1_MIGRATION_ID,
+        "tableCount": len(tables),
+        "tables": tables,
+        "indexCount": len(indexes),
+        "indexes": indexes,
+        "researchOnly": True,
+        "paperTradingOnly": True,
+        "applied": False,
+    }
+    if dry_run:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    database_url = configured_database_url()
+    if not database_url:
+        payload.update(
+            {
+                "ok": False,
+                "error": "DATABASE_URL/POSTGRES_URL is not configured; no migration was applied.",
+            }
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    store = PostgresStateStore(database_url=database_url)
+    result = store.apply_schema_migration(
+        migration_id=MILESTONE1_MIGRATION_ID,
+        sql=MILESTONE1_POSTGRES_SQL,
+        required_tables=tables,
+    )
+    payload["storage"] = result
+    payload["applied"] = bool(result.get("applied"))
+    payload["verifiedTables"] = result.get("verifiedTables", [])
+    payload["missingTables"] = result.get("missingTables", tables)
+    payload["ok"] = bool(result.get("ok") and result.get("durable"))
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload["ok"] else 1
+
+
+def run_goal_audit() -> int:
+    payload = build_goal_audit()
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
+def run_production_readiness() -> int:
+    payload = build_production_readiness()
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
+def run_external_proof_bundle(as_of: str | None) -> int:
+    payload = build_external_proof_bundle(as_of=as_of)
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Sports odds research MVP")
+    parser = argparse.ArgumentParser(description="Polymarket research-only paper analytics MVP")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("run-demo", help="Run backtest, write paper log, and generate report")
     multi_agent = subparsers.add_parser("run-multi-agent", help="Run Polymarket multi-agent paper analytics")
     multi_agent.add_argument("--source", choices=["fixture", "live"], default="fixture")
-    multi_agent.add_argument("--target-count", type=int, default=600)
+    multi_agent.add_argument("--target-count", type=int, default=300)
     list_sources_parser = subparsers.add_parser("list-sources", help="List project source registry entries")
     list_sources_parser.add_argument("--category", choices=[*ACTIVE_CATEGORIES, "global", "polymarket"], default=None)
     list_sources_parser.add_argument("--allowed-only", action="store_true", help="Show only sources allowed by default")
@@ -196,7 +326,20 @@ def main() -> int:
     managed_parser.add_argument("--target-count", type=int, default=300)
     managed_parser.add_argument("--cycle-type", choices=["scheduled_15m", "post_ingestion", "manual"], default="scheduled_15m")
     managed_parser.add_argument("--global-review", action="store_true")
-    full_scan_parser = subparsers.add_parser("run-full-scan", help="Run a public read-only full Gamma scan and top-100 paper ranking")
+    managed_parser.add_argument("--dry-run", action="store_true", help="Build the managed payload without writing state")
+    daily_parser = subparsers.add_parser("run-daily", help="Run the fixture-first daily analytical orchestrator contract")
+    daily_parser.add_argument("--source", choices=["fixture", "live"], default="fixture")
+    daily_parser.add_argument("--target-count", type=int, default=30)
+    daily_parser.add_argument("--dry-run", action="store_true", help="Validate the daily run without writing state")
+    daily_parser.add_argument("--as-of", default=None, help="ISO date or datetime used for the Europe/Sofia 09:00 run key")
+    daily_parser.add_argument("--force", action="store_true", help="Allow a non-dry-run write even when the idempotency key exists")
+    collector_parser = subparsers.add_parser("run-collector", help="Run the 15-minute read-only Data Agent collector")
+    collector_parser.add_argument("--source", choices=["fixture", "live"], default="fixture")
+    collector_parser.add_argument("--target-count", type=int, default=30)
+    collector_parser.add_argument("--dry-run", action="store_true", help="Collect and validate without writing state")
+    collector_parser.add_argument("--as-of", default=None, help="ISO date or datetime used for the 15-minute UTC bucket key")
+    collector_parser.add_argument("--force", action="store_true", help="Allow a non-dry-run write even when the idempotency key exists")
+    full_scan_parser = subparsers.add_parser("run-full-scan", help="Run a public read-only full Gamma scan and top approved paper-bet ranking")
     full_scan_parser.add_argument("--max-pages", type=int, default=30)
     full_scan_parser.add_argument("--page-size", type=int, default=100)
     full_scan_parser.add_argument("--top-limit", type=int, default=100)
@@ -208,11 +351,25 @@ def main() -> int:
     full_scan_parser.add_argument("--history-hours", type=int, default=24)
     full_scan_parser.add_argument("--history-fidelity", type=int, default=60)
     full_scan_parser.add_argument("--no-intelligence", action="store_true")
+    full_scan_parser.add_argument(
+        "--require-approved-top-limit",
+        action="store_true",
+        help="Exit non-zero unless the top output contains top-limit approved PAPER_BET rows with positive stake.",
+    )
     subparsers.add_parser("run-agent-replay", help="Replay unprocessed persisted runs chronologically")
     ml_parser = subparsers.add_parser("run-ml-update", help="Update online ML and correlation state from persisted runs")
     ml_parser.add_argument("--global-review", action="store_true")
     state_parser = subparsers.add_parser("managed-state", help="Print managed pipeline state")
     state_parser.add_argument("kind", choices=["run-history", "model-state", "correlations"])
+    migrate_parser = subparsers.add_parser("migrate", help="Validate or apply Postgres schema migrations")
+    migrate_parser.add_argument("--dry-run", action="store_true", help="Validate migration metadata without applying SQL")
+    subparsers.add_parser("goal-audit", help="Audit current repo evidence against the active Polymarket system goal")
+    subparsers.add_parser("production-readiness", help="Validate local GitHub Actions/Vercel readiness without deploying")
+    proof_parser = subparsers.add_parser(
+        "external-proof-bundle",
+        help="Print the remaining external proof checklist without writing, deploying, or calling live APIs",
+    )
+    proof_parser.add_argument("--as-of", default=None, help="Optional ISO timestamp/date to include in the proof bundle")
     args = parser.parse_args()
 
     if args.command == "run-demo":
@@ -230,7 +387,11 @@ def main() -> int:
     if args.command == "drain-codex-queue":
         return run_codex_queue(args.limit, args.summary)
     if args.command == "run-managed-cycle":
-        return run_managed(args.source, args.target_count, args.cycle_type, args.global_review)
+        return run_managed(args.source, args.target_count, args.cycle_type, args.global_review, args.dry_run)
+    if args.command == "run-daily":
+        return run_daily(args.source, args.target_count, args.dry_run, args.as_of, args.force)
+    if args.command == "run-collector":
+        return run_collector_cli(args.source, args.target_count, args.dry_run, args.as_of, args.force)
     if args.command == "run-full-scan":
         return run_full_scan_cli(
             args.max_pages,
@@ -244,6 +405,7 @@ def main() -> int:
             args.history_hours,
             args.history_fidelity,
             args.no_intelligence,
+            args.require_approved_top_limit,
         )
     if args.command == "run-agent-replay":
         return run_agents_replay_cli()
@@ -251,6 +413,14 @@ def main() -> int:
         return run_ml_update_cli(args.global_review)
     if args.command == "managed-state":
         return show_managed_state(args.kind)
+    if args.command == "migrate":
+        return run_migrations(args.dry_run)
+    if args.command == "goal-audit":
+        return run_goal_audit()
+    if args.command == "production-readiness":
+        return run_production_readiness()
+    if args.command == "external-proof-bundle":
+        return run_external_proof_bundle(args.as_of)
     parser.print_help()
     return 2
 

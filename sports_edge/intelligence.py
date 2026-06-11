@@ -529,8 +529,8 @@ def _reliability_label(score: float) -> str:
     if score > 0.8:
         return "reliable"
     if score >= 0.5:
-        return "probable/usable with caution"
-    return "unreliable/weak"
+        return "possible/probable"
+    return "unreliable/reject"
 
 
 def _reliability_explanation(score: float, source_quality: float) -> str:

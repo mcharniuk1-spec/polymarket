@@ -6,10 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .research_scope import ACTIVE_CATEGORIES, active_scope_filter, source_categories_for
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_REGISTRY_PATH = REPO_ROOT / "docs" / "ai" / "source_registry.json"
-ACTIVE_RESEARCH_CATEGORIES = ("sports", "geopolitics", "crypto", "macro", "weather", "culture")
+ACTIVE_RESEARCH_CATEGORIES = ACTIVE_CATEGORIES
 REGISTRY_FIELDS = (
     "id",
     "name",
@@ -96,7 +98,8 @@ class SourceRegistry:
                 errors.append(f"{source.id} requires access review but is allowed by default")
 
         for category in ACTIVE_RESEARCH_CATEGORIES:
-            category_sources = [source for source in self.sources if source.category == category]
+            allowed_categories = source_categories_for(category)
+            category_sources = [source for source in self.sources if source.category in allowed_categories]
             if len(category_sources) < 5:
                 errors.append(f"{category} has fewer than five sources")
             high_reliability = [source for source in category_sources if source.is_high_reliability]
@@ -112,6 +115,9 @@ class SourceRegistry:
     def categories(self) -> list[str]:
         return sorted({source.category for source in self.sources})
 
+    def active_sources(self) -> list[SourceRecord]:
+        return [source for source in self.sources if active_scope_filter(source)]
+
     def for_category(
         self,
         category: str,
@@ -120,11 +126,11 @@ class SourceRegistry:
         include_polymarket: bool = False,
         allowed_only: bool = False,
     ) -> list[SourceRecord]:
-        allowed_categories = {category}
-        if include_global:
-            allowed_categories.add("global")
-        if include_polymarket:
-            allowed_categories.add("polymarket")
+        allowed_categories = source_categories_for(
+            category,
+            include_global=include_global,
+            include_polymarket=include_polymarket,
+        )
         sources = [source for source in self.sources if source.category in allowed_categories]
         if allowed_only:
             sources = [source for source in sources if source.allowed_by_default]
@@ -141,10 +147,11 @@ class SourceRegistry:
         candidates = self.sources
         if allowed_only:
             candidates = [source for source in candidates if source.allowed_by_default]
+        allowed_categories = source_categories_for(category, include_global=True, include_polymarket=True) if category else None
         scored = [
             (self._topic_score(source, topic, category), source)
             for source in candidates
-            if category is None or source.category in {category, "global", "polymarket"}
+            if allowed_categories is None or source.category in allowed_categories
         ]
         scored = [(score, source) for score, source in scored if score > 0.0]
         scored.sort(key=lambda pair: (pair[0], self._reliability_weight(pair[1]), pair[1].allowed_by_default), reverse=True)
@@ -166,7 +173,7 @@ class SourceRegistry:
     @staticmethod
     def _topic_score(source: SourceRecord, topic: str, category: str | None) -> float:
         score = 0.0
-        if category and source.category == category:
+        if category and source.category in source_categories_for(category):
             score += 5.0
         if source.category == "polymarket":
             score += 2.0

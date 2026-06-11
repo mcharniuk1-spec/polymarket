@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from statistics import mean, pstdev
@@ -10,9 +11,9 @@ from typing import Any
 
 from .odds_math import clamp
 from .polymarket_client import PolymarketClientError, PolymarketPublicClient, parse_polymarket_list
+from .research_scope import ACTIVE_CATEGORIES, AGENT_CONTRACT, category_label, normalize_category_id
 
 
-ACTIVE_CATEGORIES = ("sports", "geopolitics", "crypto", "macro", "weather", "culture")
 PAPER_MODE = "paper"
 
 
@@ -67,7 +68,7 @@ class MarketCandidate:
             resolution_risk_flags.append("resolution_ambiguity")
         if any(word in resolution_text for word in ("depends", "requires", "subjective", "verify", "deadline")):
             resolution_risk_flags.append("settlement_wording_review")
-        if self.category in {"geopolitics", "culture"} and ambiguity > 0.25:
+        if self.category == "politics" and ambiguity > 0.25:
             resolution_risk_flags.append("category_wording_sensitive")
         global_context_score = clamp(
             (source_depth * 0.42) + (avg_credibility * 0.38) + (clamp(len(unique_sources) / 5.0, 0.0, 1.0) * 0.20),
@@ -178,6 +179,7 @@ class MultiAgentRun:
     metrics: dict[str, Any]
     bankroll_curve: list[dict[str, Any]]
     mistakes: list[dict[str, Any]]
+    agent_contract: dict[str, Any] = field(default_factory=lambda: AGENT_CONTRACT.copy())
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -217,7 +219,7 @@ class MarketDataAgent:
         self.client = client or PolymarketPublicClient()
         self.source_note = "bundled deterministic multi-category fixture"
 
-    def load_candidates(self, source_mode: str = "fixture", target_count: int = 600) -> list[MarketCandidate]:
+    def load_candidates(self, source_mode: str = "fixture", target_count: int = 300) -> list[MarketCandidate]:
         if source_mode == "live":
             try:
                 candidates = self._load_live_candidates(target_count)
@@ -262,7 +264,9 @@ class MarketDataAgent:
                 if not 0.02 <= price <= 0.98:
                     continue
                 question = str(market.get("question") or market.get("title") or "Polymarket market")
-                category = self._normalize_category(str(market.get("category") or market.get("tags") or "culture"))
+                category = self._normalize_category(str(market.get("category") or market.get("tags") or question))
+                if category is None:
+                    continue
                 token_id = str(token_ids[idx]) if idx < len(token_ids) else ""
                 spread = self._spread_from_market(market, token_id)
                 history = self._history_from_price(price, idx + len(candidates), live=True)
@@ -352,19 +356,102 @@ class MarketDataAgent:
         return f"https://polymarket.com/event/{slug}" if slug else "https://polymarket.com"
 
     @staticmethod
-    def _normalize_category(raw: str) -> str:
+    def _normalize_category(raw: str) -> str | None:
         lowered = raw.lower()
-        if any(token in lowered for token in ("nba", "nfl", "mlb", "nhl", "sports", "soccer", "football", "tennis")):
-            return "sports"
-        if any(token in lowered for token in ("election", "politic", "geopolitic", "war", "ukraine", "israel", "china")):
-            return "geopolitics"
-        if any(token in lowered for token in ("crypto", "bitcoin", "ethereum", "solana")):
-            return "crypto"
-        if any(token in lowered for token in ("fed", "inflation", "econom", "finance", "macro")):
-            return "macro"
-        if any(token in lowered for token in ("weather", "hurricane", "temperature")):
-            return "weather"
-        return "culture"
+        words = set(re.findall(r"[a-z0-9]+", lowered))
+        if normalized := normalize_category_id(lowered):
+            return normalized
+        sports_phrases = (
+            "league of legends",
+            "counter strike",
+            "counter-strike",
+            "j league",
+            "j2 league",
+            "premier league",
+            "champions league",
+            "t20 blast",
+            "pro a",
+        )
+        if words & {
+            "nba",
+            "wnba",
+            "nfl",
+            "mlb",
+            "nhl",
+            "sports",
+            "soccer",
+            "football",
+            "tennis",
+            "atp",
+            "wta",
+            "itf",
+            "ufc",
+            "mma",
+            "cricket",
+            "basketball",
+            "bbl",
+            "lnb",
+            "bsl",
+            "euroleague",
+            "eurocup",
+            "esports",
+            "dota",
+            "valorant",
+            "cs2",
+        } or any(phrase in lowered for phrase in sports_phrases):
+            return None
+        if words & {"weather", "hurricane", "temperature", "rain", "snow", "storm", "wind", "precipitation", "wildfire"}:
+            return None
+        if words & {
+            "fed",
+            "inflation",
+            "economy",
+            "economic",
+            "finance",
+            "macro",
+            "cpi",
+            "jobs",
+            "treasury",
+            "gdp",
+            "rates",
+            "spy",
+            "wti",
+            "oil",
+            "gold",
+            "aapl",
+            "msft",
+            "tsla",
+            "meta",
+            "amzn",
+            "nvda",
+            "googl",
+            "google",
+            "alphabet",
+        }:
+            if words & {"spy", "aapl", "msft", "tsla", "meta", "amzn", "nvda", "googl", "google", "alphabet"}:
+                return "stocks_trade"
+            return "macroeconomics"
+        if words & {
+            "election",
+            "elections",
+            "politic",
+            "politics",
+            "geopolitic",
+            "geopolitics",
+            "war",
+            "ceasefire",
+            "sanctions",
+            "ukraine",
+            "israel",
+            "china",
+            "trump",
+            "biden",
+            "nato",
+        }:
+            return "politics"
+        if words & {"stock", "stocks", "trade", "tariff", "tariffs", "sec", "nasdaq", "s&p", "sp500", "earnings"}:
+            return "stocks_trade"
+        return None
 
     @staticmethod
     def _actors_from_question(question: str) -> list[str]:
@@ -398,23 +485,17 @@ class MarketDataAgent:
         }
 
     def _fixture_candidates(self, target_count: int, source_note: str | None = None) -> list[MarketCandidate]:
-        self.source_note = source_note or "bundled deterministic multi-category fixture; 600 default candidates gives 100 per category"
+        self.source_note = source_note or "bundled deterministic fixture for macroeconomics, politics, and stocks/trade"
         rng = random.Random(20260525)
         templates = {
-            "sports": ("NBA", "NFL", "MLB", "NHL", "Champions League", "Tennis"),
-            "geopolitics": ("Ukraine diplomacy", "US election", "EU sanctions", "Middle East ceasefire", "Taiwan policy"),
-            "crypto": ("Bitcoin", "Ethereum", "Solana", "ETF flows", "stablecoin policy"),
-            "macro": ("Fed decision", "CPI", "unemployment", "oil", "treasury yields"),
-            "weather": ("hurricane", "temperature", "rainfall", "wildfire", "snowfall"),
-            "culture": ("box office", "streaming", "awards", "tech launch", "social trend"),
+            "macroeconomics": ("Fed decision", "CPI", "unemployment", "oil", "treasury yields", "GDP"),
+            "politics": ("US election", "EU sanctions", "Middle East ceasefire", "Taiwan policy", "congressional vote"),
+            "stocks_trade": ("NVDA close", "S&P 500", "tariff deadline", "SEC filing", "oil equities", "trade data"),
         }
         actor_pool = {
-            "sports": ("Boston", "Miami", "Dallas", "Philadelphia", "Edmonton", "Arsenal"),
-            "geopolitics": ("White House", "NATO", "EU Council", "Ukraine", "Russia", "UN"),
-            "crypto": ("BTC traders", "ETF issuers", "Ethereum validators", "SEC", "miners"),
-            "macro": ("Federal Reserve", "BLS", "Treasury", "OPEC", "ECB"),
-            "weather": ("NOAA", "NHC", "local grid", "insurers", "airlines"),
-            "culture": ("studios", "platforms", "fans", "creators", "critics"),
+            "macroeconomics": ("Federal Reserve", "BLS", "Treasury", "OPEC", "ECB", "BEA"),
+            "politics": ("White House", "NATO", "EU Council", "Congress", "UN", "Election boards"),
+            "stocks_trade": ("SEC", "Nasdaq", "USTR", "WTO", "UN Comtrade", "listed companies"),
         }
         candidates: list[MarketCandidate] = []
         per_category = max(18, math.ceil(target_count / len(ACTIVE_CATEGORIES)))
@@ -425,7 +506,7 @@ class MarketDataAgent:
                     return candidates
                 subcategory = templates[category][idx % len(templates[category])]
                 price = clamp(0.18 + (((idx * 17) + (len(category) * 5)) % 64) / 100.0, 0.08, 0.91)
-                spread = round(0.012 + ((idx * 3 + len(category)) % 8) / 1000.0 + (0.02 if category in {"culture", "geopolitics"} and idx % 5 == 0 else 0.0), 4)
+                spread = round(0.012 + ((idx * 3 + len(category)) % 8) / 1000.0 + (0.02 if category == "politics" and idx % 5 == 0 else 0.0), 4)
                 liquidity = float(2500 + ((idx * 931 + len(category) * 701) % 90000))
                 volume = float(500 + ((idx * 571 + len(subcategory) * 331) % 40000))
                 context_tilt = (((idx * 11 + len(subcategory)) % 19) - 9) / 100.0
@@ -464,17 +545,11 @@ class MarketDataAgent:
 
     @staticmethod
     def _fixture_title(category: str, subcategory: str, idx: int, actors: list[str]) -> str:
-        if category == "sports":
-            return f"Will {actors[0]} beat {actors[-1]} in the {subcategory} fixture #{idx + 1}?"
-        if category == "geopolitics":
+        if category == "politics":
             return f"Will {subcategory} produce a verified policy breakthrough before deadline #{idx + 1}?"
-        if category == "crypto":
-            return f"Will {subcategory} close above the stated threshold in market window #{idx + 1}?"
-        if category == "macro":
+        if category == "macroeconomics":
             return f"Will {subcategory} resolve above consensus in release window #{idx + 1}?"
-        if category == "weather":
-            return f"Will the {subcategory} threshold be reached in monitored region #{idx + 1}?"
-        return f"Will the {subcategory} outcome occur before settlement window #{idx + 1}?"
+        return f"Will {subcategory} meet the market threshold before the trade window #{idx + 1}?"
 
     @staticmethod
     def _fixture_news(category: str, actors: list[str], idx: int, context_tilt: float) -> list[dict[str, Any]]:
@@ -505,22 +580,16 @@ class MarketDataAgent:
             "source_depth": round(clamp(0.35 + (idx % 8) / 12.0, 0.0, 1.0), 4),
             "liquidity_depth": round(clamp(0.20 + (idx % 10) / 10.0, 0.0, 1.0), 4),
             "volume_shock": round(clamp((idx % 9) / 8.0, 0.0, 1.0), 4),
-            "ambiguity": round(0.12 + (0.18 if category in {"geopolitics", "culture"} else 0.06) + ((idx % 4) * 0.025), 4),
+            "ambiguity": round(0.12 + (0.18 if category == "politics" else 0.06) + ((idx % 4) * 0.025), 4),
         }
 
     @staticmethod
     def _fixture_resolution(category: str) -> str:
-        if category == "sports":
-            return "Objective final-score settlement; still verify league source and postponement rules."
-        if category == "geopolitics":
+        if category == "politics":
             return "Requires verified official/public-source settlement; ambiguity risk is materially higher."
-        if category == "crypto":
-            return "Price-threshold settlement depends on stated oracle/source and exact time window."
-        if category == "macro":
+        if category == "macroeconomics":
             return "Economic-release settlement should use named official release and revision policy."
-        if category == "weather":
-            return "Weather settlement depends on named station/region and official measurement source."
-        return "Culture markets need strict wording review because subjective/event-definition risk can be high."
+        return "Stocks/trade settlement depends on named market, official data source, release timing, and exact close/window rules."
 
     @staticmethod
     def _history_from_price(price: float, idx: int, live: bool) -> list[dict[str, Any]]:
@@ -643,14 +712,11 @@ class MarketContextNewsAgent:
 class CategoryExpertAgent:
     def assess(self, candidate: MarketCandidate, odds: AgentAssessment, context: AgentAssessment) -> AgentAssessment:
         category_rules = {
-            "sports": {"min_liquidity": 2000.0, "max_spread": 0.07, "ambiguity_cap": 0.32},
-            "geopolitics": {"min_liquidity": 3500.0, "max_spread": 0.065, "ambiguity_cap": 0.48},
-            "crypto": {"min_liquidity": 4500.0, "max_spread": 0.055, "ambiguity_cap": 0.30},
-            "macro": {"min_liquidity": 3000.0, "max_spread": 0.06, "ambiguity_cap": 0.34},
-            "weather": {"min_liquidity": 2500.0, "max_spread": 0.07, "ambiguity_cap": 0.38},
-            "culture": {"min_liquidity": 2500.0, "max_spread": 0.06, "ambiguity_cap": 0.32},
+            "macroeconomics": {"min_liquidity": 3000.0, "max_spread": 0.06, "ambiguity_cap": 0.34},
+            "politics": {"min_liquidity": 3500.0, "max_spread": 0.065, "ambiguity_cap": 0.48},
+            "stocks_trade": {"min_liquidity": 3500.0, "max_spread": 0.055, "ambiguity_cap": 0.34},
         }
-        rule = category_rules.get(candidate.category, category_rules["culture"])
+        rule = category_rules.get(candidate.category, category_rules["macroeconomics"])
         ambiguity = candidate.stats.get("ambiguity", 0.3)
         agreement = 1.0 - min(abs(odds.probability - context.probability), 0.5) * 2.0
         probability = clamp((odds.probability * 0.46) + (context.probability * 0.38) + (candidate.price * 0.16), 0.03, 0.97)
@@ -666,11 +732,11 @@ class CategoryExpertAgent:
         if any(word in candidate.market_title.lower() for word in vague_words):
             flags.append("vague_market_language")
         return AgentAssessment(
-            agent=f"{candidate.category}_category_expert",
+            agent=f"{candidate.category}_section_expert",
             probability=round(probability, 4),
             confidence=round(confidence, 4),
             score=round((probability - candidate.price) * confidence * agreement, 4),
-            rationale=f"{candidate.category} expert compared liquidity, spread, ambiguity, and model/context agreement.",
+            rationale=f"{category_label(candidate.category)} expert compared liquidity, spread, ambiguity, and model/context agreement.",
             features={
                 "agreement": round(agreement, 4),
                 "min_liquidity": rule["min_liquidity"],
@@ -684,20 +750,18 @@ class CategoryExpertAgent:
     @staticmethod
     def _category_notes(category: str) -> str:
         notes = {
-            "sports": "Prioritize objective settlement, external odds comparability, injuries, rest, and closing-line value.",
-            "geopolitics": "Prioritize official sources, actor incentives, deadline mechanics, and resolution ambiguity control.",
-            "crypto": "Prioritize oracle/source timing, liquidity, volatility, and exchange-wide regime shifts.",
-            "macro": "Prioritize official release definitions, survey consensus, revision policy, and calendar timing.",
-            "weather": "Prioritize named measurement station/source, forecast model spread, and exact threshold wording.",
-            "culture": "Prioritize settlement wording and avoid subjective social-media momentum unless evidence is strong.",
+            "macroeconomics": "Prioritize official release definitions, survey consensus, revision policy, and calendar timing.",
+            "politics": "Prioritize official sources, actor incentives, deadline mechanics, and resolution ambiguity control.",
+            "stocks_trade": "Prioritize official market closes, filings, trade releases, tariffs, liquidity, and exact time-window wording.",
         }
-        return notes.get(category, notes["culture"])
+        return notes.get(category, notes["macroeconomics"])
 
 
 class DecisionBankrollAgent:
-    def __init__(self, bankroll: float = 100.0, deployment_budget: float = 100.0) -> None:
+    def __init__(self, bankroll: float = 100.0, deployment_budget: float = 100.0, target_bet_count: int | None = None) -> None:
         self.bankroll = bankroll
         self.deployment_budget = deployment_budget
+        self.target_bet_count = target_bet_count
 
     def build_recommendations(
         self,
@@ -756,6 +820,12 @@ class DecisionBankrollAgent:
         self._allocate_paper_budget(recommendations)
         return recommendations
 
+    def reallocate_paper_budget(self, recommendations: list[dict[str, Any]]) -> None:
+        for item in recommendations:
+            if item["decision"] == "PAPER_BET":
+                item["stake_units"] = 0.0
+        self._allocate_paper_budget(recommendations)
+
     @staticmethod
     def _risk_tier(candidate: MarketCandidate, edge: float, confidence: float, flags: list[str]) -> str:
         if flags or candidate.spread > 0.08 or confidence < 0.24:
@@ -804,7 +874,7 @@ class DecisionBankrollAgent:
             "spread widens materially before entry",
             "resolution wording changes or becomes ambiguous",
         ]
-        if candidate.category in {"geopolitics", "culture"}:
+        if candidate.category == "politics":
             conditions.append("new official/context source contradicts the thesis")
         if flags:
             conditions.extend(flags)
@@ -817,19 +887,26 @@ class DecisionBankrollAgent:
         event_exposure: dict[str, float] = {}
         category_exposure: dict[str, float] = {}
         remaining = budget
+        target_bet_count = max(int(self.target_bet_count or 0), 0)
+        minimum_stake = 0.25
         eligible = [
             item
             for item in sorted(recommendations, key=lambda row: row["rank_score"], reverse=True)
             if item["decision"] == "PAPER_BET"
         ]
-        for item in eligible:
+        max_seeded_by_budget = int(budget // minimum_stake)
+        selected_limit = min(len(eligible), max_seeded_by_budget)
+        if target_bet_count:
+            selected_limit = min(selected_limit, target_bet_count)
+        selected = eligible[:selected_limit]
+
+        for item in selected:
             candidate = item["candidate"]
             event_id = str(candidate["event_id"])
             category = str(candidate["category"])
             raw = float(item["raw_stake_units"])
             event_room = max(10.0 - event_exposure.get(event_id, 0.0), 0.0)
-            category_room = max(20.0 - category_exposure.get(category, 0.0), 0.0)
-            stake = round(min(raw, event_room, category_room, remaining), 2)
+            stake = round(min(raw, minimum_stake, event_room, remaining), 2)
             if stake <= 0:
                 item["decision"] = "WATCHLIST"
                 item["reason"] = "Watchlist: portfolio cap reached before allocation"
@@ -841,36 +918,155 @@ class DecisionBankrollAgent:
             if remaining <= 0:
                 break
 
-        # Paper mode can fill the learning budget across already qualified bets, but caps still apply.
-        while remaining >= 0.25:
+        # Paper mode first stakes every selected approved bet, then allocates the rest by
+        # category diversity and reliability while preserving event and risk-tier caps.
+        top_up_eligible = [item for item in selected if item["decision"] == "PAPER_BET" and float(item["stake_units"]) > 0.0]
+        total_base_cap = sum(self._risk_tier_cap(item) for item in top_up_eligible) or 1.0
+        cap_multiplier = max(1.0, budget / total_base_cap)
+        category_targets = self._category_budget_targets(top_up_eligible, budget)
+        while remaining >= 0.01:
             progressed = False
-            for item in eligible:
-                if item["decision"] != "PAPER_BET":
+            prioritized = sorted(
+                top_up_eligible,
+                key=lambda item: (
+                    self._category_underfill(item, category_exposure, category_targets),
+                    self._reliability_weight(item),
+                    float(item["rank_score"]),
+                ),
+                reverse=True,
+            )
+            for item in prioritized:
+                category = str(item["candidate"]["category"])
+                category_room = max(category_targets.get(category, 0.0) - category_exposure.get(category, 0.0), 0.0)
+                if category_room <= 0.0:
                     continue
-                candidate = item["candidate"]
-                event_id = str(candidate["event_id"])
-                category = str(candidate["category"])
-                tier_cap = {"LOW": 5.0, "MEDIUM": 3.0, "HIGH": 1.5, "VERY_RISKY": 0.5}[item["risk_tier"]]
-                event_room = max(10.0 - event_exposure.get(event_id, 0.0), 0.0)
-                category_room = max(20.0 - category_exposure.get(category, 0.0), 0.0)
-                stake_room = max(tier_cap - float(item["stake_units"]), 0.0)
-                add = round(min(0.25, event_room, category_room, stake_room, remaining), 2)
+                add = self._stake_addition(item, event_exposure, remaining, category_room=category_room, cap_multiplier=cap_multiplier)
                 if add <= 0:
                     continue
-                item["stake_units"] = round(float(item["stake_units"]) + add, 2)
-                event_exposure[event_id] = event_exposure.get(event_id, 0.0) + add
-                category_exposure[category] = category_exposure.get(category, 0.0) + add
-                remaining = round(remaining - add, 2)
+                remaining = self._apply_stake_addition(item, add, event_exposure, category_exposure, remaining)
                 progressed = True
-                if remaining < 0.25:
+                if remaining < 0.01:
                     break
             if not progressed:
                 break
+
+        while remaining >= 0.01:
+            # Final residual pass: keep the paper book fully staked whenever any approved
+            # bet still has room, but favor under-exposed categories before pure rank.
+            prioritized = sorted(
+                top_up_eligible,
+                key=lambda item: (
+                    -category_exposure.get(str(item["candidate"]["category"]), 0.0),
+                    self._reliability_weight(item),
+                    float(item["rank_score"]),
+                ),
+                reverse=True,
+            )
+            progressed = False
+            for item in prioritized:
+                add = self._stake_addition(item, event_exposure, remaining, cap_multiplier=cap_multiplier)
+                if add <= 0:
+                    continue
+                remaining = self._apply_stake_addition(item, add, event_exposure, category_exposure, remaining)
+                progressed = True
+                if remaining < 0.01:
+                    break
+            if not progressed:
+                break
+
+        while remaining >= 0.01 and top_up_eligible:
+            # Paper-only residual: if strict caps strand a small balance, keep the
+            # bankroll fully deployed by adding to the least-exposed reliable buckets.
+            prioritized = sorted(
+                top_up_eligible,
+                key=lambda item: (
+                    -category_exposure.get(str(item["candidate"]["category"]), 0.0),
+                    self._reliability_weight(item),
+                    float(item["rank_score"]),
+                ),
+                reverse=True,
+            )
+            for item in prioritized:
+                add = round(min(0.25, remaining), 2)
+                if add <= 0:
+                    continue
+                remaining = self._apply_stake_addition(item, add, event_exposure, category_exposure, remaining)
+                if remaining < 0.01:
+                    break
 
         for item in eligible:
             if item["decision"] == "PAPER_BET" and float(item["stake_units"]) <= 0.0:
                 item["decision"] = "WATCHLIST"
                 item["reason"] = "Watchlist: qualified but the 100-coin paper deployment budget was already allocated"
+
+    @staticmethod
+    def _risk_tier_cap(item: dict[str, Any]) -> float:
+        return {"LOW": 5.0, "MEDIUM": 3.0, "HIGH": 1.5, "VERY_RISKY": 0.5}.get(str(item["risk_tier"]), 1.0)
+
+    @staticmethod
+    def _reliability_weight(item: dict[str, Any]) -> float:
+        tier_weight = {"LOW": 1.25, "MEDIUM": 1.0, "HIGH": 0.72, "VERY_RISKY": 0.35}.get(str(item["risk_tier"]), 0.6)
+        confidence = clamp(float(item.get("confidence", 0.0)), 0.05, 0.95)
+        ev = clamp(float(item.get("expected_value", 0.0)), 0.0, 1.0)
+        return round(tier_weight * (0.60 + confidence) * (1.0 + ev * 0.25), 6)
+
+    def _category_budget_targets(self, items: list[dict[str, Any]], budget: float) -> dict[str, float]:
+        categories = sorted({str(item["candidate"]["category"]) for item in items})
+        if not categories:
+            return {}
+        equal_share = 1.0 / len(categories)
+        category_weights = {
+            category: sum(self._reliability_weight(item) for item in items if str(item["candidate"]["category"]) == category)
+            for category in categories
+        }
+        total_weight = sum(category_weights.values()) or 1.0
+        return {
+            category: round(budget * ((equal_share * 0.55) + ((category_weights[category] / total_weight) * 0.45)), 2)
+            for category in categories
+        }
+
+    @staticmethod
+    def _category_underfill(
+        item: dict[str, Any],
+        category_exposure: dict[str, float],
+        category_targets: dict[str, float],
+    ) -> float:
+        category = str(item["candidate"]["category"])
+        target = max(category_targets.get(category, 0.0), 0.01)
+        return max((target - category_exposure.get(category, 0.0)) / target, 0.0)
+
+    def _stake_addition(
+        self,
+        item: dict[str, Any],
+        event_exposure: dict[str, float],
+        remaining: float,
+        *,
+        category_room: float | None = None,
+        cap_multiplier: float = 1.0,
+    ) -> float:
+        event_id = str(item["candidate"]["event_id"])
+        event_room = max(10.0 - event_exposure.get(event_id, 0.0), 0.0)
+        stake_room = max((self._risk_tier_cap(item) * cap_multiplier) - float(item["stake_units"]), 0.0)
+        rooms = [0.25, event_room, stake_room, remaining]
+        if category_room is not None:
+            rooms.append(category_room)
+        return round(min(rooms), 2)
+
+    @staticmethod
+    def _apply_stake_addition(
+        item: dict[str, Any],
+        add: float,
+        event_exposure: dict[str, float],
+        category_exposure: dict[str, float],
+        remaining: float,
+    ) -> float:
+        candidate = item["candidate"]
+        event_id = str(candidate["event_id"])
+        category = str(candidate["category"])
+        item["stake_units"] = round(float(item["stake_units"]) + add, 2)
+        event_exposure[event_id] = round(event_exposure.get(event_id, 0.0) + add, 2)
+        category_exposure[category] = round(category_exposure.get(category, 0.0) + add, 2)
+        return round(remaining - add, 2)
 
 
 class EvaluationLearningAgent:
@@ -917,6 +1113,10 @@ class EvaluationLearningAgent:
             "metrics": {
                 "research_only": True,
                 "mode": PAPER_MODE,
+                "paper_trading_only": True,
+                "active_sections": list(ACTIVE_CATEGORIES),
+                "agent_contract_version": "three_agent_v1",
+                "reliability_labels": AGENT_CONTRACT["reliability_labels"],
                 "starting_bankroll_units": starting_bankroll,
                 "deployment_budget_units": starting_bankroll,
                 "ending_bankroll_units": bankroll,
@@ -1085,7 +1285,7 @@ class EvaluationLearningAgent:
             mistake_type = "odds_trend_overfit"
         elif item["candidate"]["spread"] > 0.05:
             mistake_type = "poor_liquidity_or_spread"
-        elif category in {"geopolitics", "culture"}:
+        elif category == "politics":
             mistake_type = "ambiguity_or_actor_timing"
         else:
             mistake_type = "variance_or_stake_timing"
@@ -1118,7 +1318,7 @@ class MultiAgentPipeline:
         self.decision_agent = decision_agent or DecisionBankrollAgent()
         self.evaluation_agent = evaluation_agent or EvaluationLearningAgent()
 
-    def run(self, source_mode: str = "fixture", target_count: int = 600) -> MultiAgentRun:
+    def run(self, source_mode: str = "fixture", target_count: int = 300) -> MultiAgentRun:
         candidates = self.market_data.load_candidates(source_mode=source_mode, target_count=target_count)
         assessments: dict[str, dict[str, AgentAssessment]] = {}
         for candidate in candidates:

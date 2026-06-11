@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from dataclasses import replace
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -24,10 +25,12 @@ from .agents import (
     now_utc,
 )
 from .dashboard_enrichment import enrich_multi_agent_payload
+from .external_sources import build_external_data_readiness
 from .intelligence import run_intelligence_cycle
-from .managed_pipeline import _correlation_pairs
+from .managed_pipeline import _correlation_pairs, _latest_full_scan_dashboard
 from .odds_math import clamp
 from .polymarket_client import PolymarketClientError, PolymarketPublicClient, parse_polymarket_list
+from .research_scope import normalize_category_id
 from .reporting import multi_agent_payload
 from .source_registry import SourceRegistry
 
@@ -58,6 +61,8 @@ def run_full_scan(
     target_date = scan_date or datetime.now(timezone.utc).date().isoformat()
     state_dir = Path(output_dir)
     previous = _read_json(state_dir / "latest_full_scan.json")
+    registry = SourceRegistry()
+    registry.require_valid()
 
     market_client = client or PolymarketPublicClient(timeout_seconds=20.0)
     raw_markets, page_summaries, stop_reason = scan_gamma_markets(
@@ -85,10 +90,16 @@ def run_full_scan(
     enriched = enrich_multi_agent_payload(multi_agent_payload(multi_agent))
     ranked = sorted(multi_agent.recommendations, key=lambda row: row["rank_score"], reverse=True)
     top_100 = _top_recommendations(ranked, top_limit)
+    approved_shortfall = max(top_limit - len(top_100), 0)
     event_groups = build_event_groups(ranked)
     correlations = build_scan_correlations([item["candidate"] for item in ranked])
     monitor = build_monitoring_instructions(top_100, previous)
     source_matrix = build_agent_source_matrix()
+    external_readiness = build_external_data_readiness(
+        [item["candidate"] for item in ranked],
+        registry=registry,
+        decision_at=scan_started_at,
+    )
     intelligence = (
         run_intelligence_cycle(
             cycle_type="manual",
@@ -117,12 +128,15 @@ def run_full_scan(
         "candidateOutcomeCount": len(candidates),
         "topLimit": top_limit,
         "topRecommendationCount": len(top_100),
+        "topRecommendationTargetMet": approved_shortfall == 0,
+        "approvedPaperBetShortfall": approved_shortfall,
         "paperBetCount": multi_agent.metrics["paper_bet_count"],
         "watchlistCount": multi_agent.metrics["watchlist_count"],
         "rejectedCount": multi_agent.metrics["rejected_count"],
         "eventGroupCount": len(event_groups),
         "correlationPairCount": sum(len(row["pairs"]) for row in correlations["categories"]),
         "timeSeries": time_series["summary"],
+        "externalSourceStatusCounts": external_readiness["sourceStatusSummary"]["statusCounts"],
         "intelligenceStatus": intelligence.get("status"),
         "intelligenceMarketCount": intelligence.get("summary", {}).get("marketCount", 0),
         "stopReason": stop_reason,
@@ -148,6 +162,7 @@ def run_full_scan(
         "monitoring": monitor,
         "timeSeries": time_series,
         "agentSourceMatrix": source_matrix,
+        "externalDataReadiness": external_readiness,
         "excluded": excluded,
         "multiAgent": {
             "run_id": multi_agent.run_id,
@@ -172,8 +187,10 @@ def run_full_scan(
             "correlations": state_dir / "correlation_tables.json",
             "timeSeries": state_dir / "time_series_samples.json",
             "agentSources": state_dir / "agent_source_matrix.json",
+            "externalReadiness": state_dir / "external_data_readiness.json",
             "monitoring": state_dir / "monitoring_instructions.json",
             "intelligence": state_dir / "intelligence_analysis.json",
+            "currentDashboard": Path("data/generated/production_state/dashboard_latest.json"),
             "report": Path(report_path),
         }
         _write_json(artifacts["rawMarkets"], raw_markets)
@@ -183,11 +200,15 @@ def run_full_scan(
         _write_json(artifacts["correlations"], correlations)
         _write_json(artifacts["timeSeries"], time_series)
         _write_json(artifacts["agentSources"], source_matrix)
+        _write_json(artifacts["externalReadiness"], external_readiness)
         _write_json(artifacts["monitoring"], monitor)
         _write_json(artifacts["intelligence"], intelligence)
         payload["artifactPaths"] = {key: str(path) for key, path in artifacts.items()}
         _write_markdown_report(artifacts["report"], payload)
         _write_json(artifacts["latest"], payload)
+        current_dashboard = _latest_full_scan_dashboard(None)
+        if current_dashboard:
+            _write_json(artifacts["currentDashboard"], current_dashboard)
 
     return payload
 
@@ -266,6 +287,10 @@ def build_candidates_from_markets(
             question = str(market.get("question") or market.get("title") or "Polymarket market")
             event = _primary_event(market)
             category = _normalize_category(market, question, event)
+            if category is None:
+                reason_counts["out_of_scope_category"] += 1
+                exclusions.append(_excluded_row(market, reason="out_of_scope_category", outcome=str(outcome)))
+                continue
             candidate_id = _candidate_id(market, index, token_id, str(outcome))
             candidates.append(
                 MarketCandidate(
@@ -504,7 +529,7 @@ def run_candidate_agents(candidates: list[MarketCandidate], *, top_limit: int) -
     odds_agent = OddsModelingAgent()
     context_agent = MarketContextNewsAgent()
     category_agent = CategoryExpertAgent()
-    decision_agent = DecisionBankrollAgent(bankroll=100.0, deployment_budget=100.0)
+    decision_agent = DecisionBankrollAgent(bankroll=100.0, deployment_budget=100.0, target_bet_count=top_limit)
     evaluation_agent = EvaluationLearningAgent()
     assessments: dict[str, dict[str, AgentAssessment]] = {}
     for candidate in candidates:
@@ -515,6 +540,7 @@ def run_candidate_agents(candidates: list[MarketCandidate], *, top_limit: int) -
     recommendations = decision_agent.build_recommendations(candidates, assessments)
     recommendations.sort(key=lambda item: item["rank_score"], reverse=True)
     _apply_mutually_exclusive_guardrails(recommendations)
+    decision_agent.reallocate_paper_budget(recommendations)
     evaluation = evaluation_agent.evaluate(recommendations)
     ranked_paper_bets = [item for item in recommendations if item["decision"] == "PAPER_BET"]
     recommendations_by_date = sorted(
@@ -683,7 +709,7 @@ def build_agent_source_matrix() -> dict[str, Any]:
                             if _external_series_source(source)
                         ],
                         "purpose": (
-                            "entity-linked crypto, sports, macro, trade, company, and conflict time-series; "
+                            "entity-linked macroeconomic, political, stock, company, and trade time-series; "
                             "registered now, fetched only when public/API access and as-of storage are implemented"
                         ),
                     },
@@ -744,11 +770,9 @@ def _source_row(source: Any, evidence_role: str) -> dict[str, Any]:
 def _external_series_source(source: Any) -> bool:
     source_type = str(source.source_type)
     source_id = str(source.id)
-    if source.category in {"crypto", "macro"} and "api" in source_type:
+    if source.category in {"macro", "macroeconomics", "stocks_trade"} and "api" in source_type:
         return True
-    if source.category == "sports" and any(token in source_type for token in ("api", "results", "endpoint", "official_site")):
-        return True
-    if source.category == "geopolitics" and any(token in source_type for token in ("api", "conflict", "official_site", "feed", "government")):
+    if source.category in {"geopolitics", "politics"} and any(token in source_type for token in ("api", "conflict", "official_site", "feed", "government")):
         return True
     if source.category == "global" and any(token in source_type for token in ("trade", "company")):
         return True
@@ -762,7 +786,7 @@ def _source_scope(source: Any) -> str:
         return "client_available_public_activity"
     if _external_series_source(source):
         return "registered_external_time_series"
-    if source.category in {"global", "geopolitics", "macro", "sports", "crypto"}:
+    if source.category in {"global", "geopolitics", "politics", "macro", "macroeconomics", "stocks_trade"}:
         return "registered_context_source"
     return "registered_source"
 
@@ -831,11 +855,10 @@ def build_monitoring_instructions(top_recommendations: list[dict[str, Any]], pre
 def _top_recommendations(recommendations: list[dict[str, Any]], top_limit: int) -> list[dict[str, Any]]:
     selected = []
     seen: set[str] = set()
-    priority_rows = [
+    approved_paper_bets = [
         item for item in recommendations if item["decision"] == "PAPER_BET" and float(item.get("stake_units", 0.0)) > 0.0
     ]
-    non_rejected = [item for item in recommendations if item["decision"] != "REJECTED"]
-    for item in [*priority_rows, *non_rejected, *recommendations]:
+    for item in approved_paper_bets:
         candidate_id = str(item.get("candidate", {}).get("candidate_id", ""))
         if candidate_id in seen:
             continue
@@ -967,7 +990,7 @@ def _subcategory(market: dict[str, Any], event: dict[str, Any]) -> str:
     return str(market.get("groupItemTitle") or market.get("marketType") or event.get("title") or "polymarket")
 
 
-def _normalize_category(market: dict[str, Any], question: str, event: dict[str, Any]) -> str:
+def _normalize_category(market: dict[str, Any], question: str, event: dict[str, Any]) -> str | None:
     series = event.get("series")
     series_text = ""
     if isinstance(series, list):
@@ -981,17 +1004,177 @@ def _normalize_category(market: dict[str, Any], question: str, event: dict[str, 
             question,
         ]
     ).lower()
-    if any(token in raw for token in ("nba", "nfl", "mlb", "nhl", "sports", "soccer", "football", "tennis", "ufc")):
-        return "sports"
-    if any(token in raw for token in ("election", "politic", "geopolitic", "war", "ukraine", "israel", "china", "trump", "biden")):
-        return "geopolitics"
-    if any(token in raw for token in ("crypto", "bitcoin", "btc", "ethereum", "eth", "solana", "xrp", "doge", "bnb", "hyperliquid")):
-        return "crypto"
-    if any(token in raw for token in ("fed", "inflation", "econom", "finance", "macro", "cpi", "jobs", "treasury")):
-        return "macro"
-    if any(token in raw for token in ("weather", "hurricane", "temperature", "rain", "snow", "storm")):
-        return "weather"
-    return "culture"
+    if normalized := normalize_category_id(str(market.get("category") or "")):
+        return normalized
+    words = set(re.findall(r"[a-z0-9]+", raw))
+    phrases = {
+        "league of legends",
+        "counter strike",
+        "counter-strike",
+        "j league",
+        "j2 league",
+        "premier league",
+        "champions league",
+        "t20 blast",
+        "world cup",
+        "grand slam",
+        "pro a",
+    }
+    sports_words = {
+        "nba",
+        "wnba",
+        "nfl",
+        "mlb",
+        "nhl",
+        "ncaa",
+        "sports",
+        "soccer",
+        "football",
+        "tennis",
+        "atp",
+        "wta",
+        "itf",
+        "ufc",
+        "mma",
+        "cricket",
+        "rugby",
+        "basketball",
+        "bbl",
+        "lnb",
+        "bsl",
+        "euroleague",
+        "eurocup",
+        "esports",
+        "dota",
+        "valorant",
+        "cs2",
+        "fifa",
+    }
+    weather_words = {
+        "weather",
+        "hurricane",
+        "temperature",
+        "rain",
+        "snow",
+        "storm",
+        "wind",
+        "precipitation",
+        "heat",
+        "cold",
+        "wildfire",
+    }
+    crypto_words = {
+        "crypto",
+        "bitcoin",
+        "btc",
+        "ethereum",
+        "eth",
+        "solana",
+        "sol",
+        "xrp",
+        "doge",
+        "dogecoin",
+        "bnb",
+        "hyperliquid",
+        "hype",
+        "litecoin",
+        "ltc",
+        "cardano",
+        "ada",
+        "chainlink",
+        "link",
+        "sui",
+        "tron",
+        "trx",
+    }
+    macro_words = {
+        "fed",
+        "inflation",
+        "economy",
+        "economic",
+        "finance",
+        "macro",
+        "cpi",
+        "jobs",
+        "treasury",
+        "gdp",
+        "rates",
+        "spy",
+        "wti",
+        "oil",
+        "gold",
+        "aapl",
+        "msft",
+        "tsla",
+        "meta",
+        "amzn",
+        "nvda",
+        "googl",
+        "google",
+        "alphabet",
+    }
+    stocks_trade_words = {
+        "stock",
+        "stocks",
+        "equity",
+        "equities",
+        "shares",
+        "spy",
+        "s&p",
+        "sp500",
+        "nasdaq",
+        "dow",
+        "sec",
+        "filing",
+        "earnings",
+        "aapl",
+        "msft",
+        "tsla",
+        "meta",
+        "amzn",
+        "nvda",
+        "googl",
+        "google",
+        "alphabet",
+        "trade",
+        "tariff",
+        "tariffs",
+        "wto",
+        "customs",
+        "imports",
+        "exports",
+    }
+    politics_words = {
+        "election",
+        "elections",
+        "politic",
+        "politics",
+        "geopolitic",
+        "geopolitics",
+        "war",
+        "ceasefire",
+        "sanctions",
+        "ukraine",
+        "israel",
+        "china",
+        "trump",
+        "biden",
+        "nato",
+        "congress",
+    }
+    if words & crypto_words:
+        return None
+    if words & sports_words or any(phrase in raw for phrase in phrases):
+        return None
+    if words & weather_words:
+        return None
+    if words & stocks_trade_words or "s&p 500" in raw:
+        return "stocks_trade"
+    if words & macro_words or "treasury yield" in raw:
+        return "macroeconomics"
+    if words & politics_words:
+        return "politics"
+    return None
 
 
 def _polymarket_url(market: dict[str, Any], event: dict[str, Any]) -> str:
@@ -1134,7 +1317,7 @@ def _write_json(path: Path, payload: Any) -> None:
 def _write_markdown_report(path: Path, payload: dict[str, Any]) -> None:
     summary = payload["summary"]
     lines = [
-        "# Polymarket Full-Scan Top 100 Paper Recommendations",
+        "# Polymarket Full-Scan Top Approved Paper Bets",
         "",
         f"Generated: {summary['scanStartedAt']}",
         "",
@@ -1148,7 +1331,9 @@ def _write_markdown_report(path: Path, payload: dict[str, Any]) -> None:
         f"- Raw markets scanned: {summary['rawMarketCount']}",
         f"- Eligible outcome candidates: {summary['candidateOutcomeCount']}",
         f"- Event groups: {summary['eventGroupCount']}",
-        f"- Top recommendations: {summary['topRecommendationCount']}",
+        f"- Approved paper-bet recommendations: {summary['topRecommendationCount']} / {summary['topLimit']}",
+        f"- Approval target met: {'yes' if summary['topRecommendationTargetMet'] else 'no'}",
+        f"- Approved paper-bet shortfall: {summary['approvedPaperBetShortfall']}",
         f"- Paper-bet decisions with stake: {summary['paperBetCount']}",
         f"- CLOB histories observed: {summary['timeSeries']['observedHistoryCount']} / {summary['timeSeries']['sampledCandidateCount']} sampled",
         f"- Gamma-derived fallback histories: {summary['timeSeries']['fallbackHistoryCount']}",
@@ -1194,10 +1379,46 @@ def _write_markdown_report(path: Path, payload: dict[str, Any]) -> None:
                 else:
                     planned.append(label)
         lines.append(f"| {row['category']} | {_unique_join(fetched) or '-'} | {_unique_join(planned) or '-'} |")
+    readiness = payload.get("externalDataReadiness", {})
+    lines.extend(
+        [
+            "",
+            "## External Data Readiness",
+            "",
+            "| Category | Candidates | Implemented | Planned/as-of needed | Blocked/access review |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
+    for row in readiness.get("categoryReadiness", []):
+        counts = row.get("sourceStatusCounts", {})
+        planned_count = int(counts.get("registered_needs_fetcher_and_asof_storage", 0)) + int(counts.get("client_available_not_wired", 0))
+        lines.append(
+            "| "
+            f"{row['category']} | {row['candidateCount']} | {counts.get('implemented', 0)} | "
+            f"{planned_count} | {counts.get('blocked_until_access_or_license_review', 0)} |"
+    )
+    entities = readiness.get("detectedEntities", {})
+    country_terms = ", ".join(f"{row['name']} ({row['count']})" for row in entities.get("countries", [])[:12])
+    political_terms = ", ".join(f"{row['name']} ({row['count']})" for row in entities.get("politicalTrends", [])[:12])
+    macro_terms = ", ".join(f"{row['name']} ({row['count']})" for row in entities.get("macroTrends", [])[:12])
+    company_terms = ", ".join(f"{row['name']} ({row['count']})" for row in entities.get("companiesAndCommodities", [])[:12])
+    trade_terms = ", ".join(f"{row['name']} ({row['count']})" for row in entities.get("tradeSignals", [])[:12])
+    lines.extend(
+        [
+            "",
+            f"- Country/political entities detected: {country_terms or '-'}",
+            f"- Political trends detected: {political_terms or '-'}",
+            f"- Macro trends detected: {macro_terms or '-'}",
+            f"- Companies/commodities detected: {company_terms or '-'}",
+            f"- Trade signals detected: {trade_terms or '-'}",
+            "- Modeling rule: same-event/sibling correlations are exposure constraints, not causal instruments.",
+            "- External source rule: no registered source strengthens a paper forecast until fetched with source id, URL, and as-of timestamps.",
+        ]
+    )
     lines.extend(
         [
         "",
-        "## Top 100",
+        "## Top Approved Paper Bets",
         "",
         "| Rank | Decision | Category | Market / Outcome | Forecast | Price | EV | Confidence | Stake | Why |",
         "|---:|---|---|---|---:|---:|---:|---:|---:|---|",

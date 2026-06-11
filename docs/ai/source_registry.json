@@ -299,6 +299,45 @@
     "allowed_by_default": true
   },
   {
+    "id": "sports-nba-official-stats",
+    "name": "NBA Official Stats Pages",
+    "category": "sports",
+    "source_type": "official_site",
+    "access": "public-no-key",
+    "freshness": "live to event dependent",
+    "history_depth": "NBA schedules, standings, box scores, player leaders, team stats, advanced stats, and game logs where publicly posted",
+    "reliability_tier": "primary",
+    "license_notes": "Official NBA stats pages; use as settlement-sensitive reference with retrieval timestamp and avoid undocumented scraping until adapter terms are reviewed.",
+    "query_template": "NBA official stats players teams box score standings for {topic} {actors}",
+    "allowed_by_default": true
+  },
+  {
+    "id": "sports-nhl-web-api",
+    "name": "NHL Public Web API And Official Stats",
+    "category": "sports",
+    "source_type": "official_site_endpoint",
+    "access": "public-no-key",
+    "freshness": "live to event dependent",
+    "history_depth": "NHL schedules, standings, gamecenter feeds, box scores, play-by-play, rosters, player stats, and team stats where exposed",
+    "reliability_tier": "high",
+    "license_notes": "NHL-hosted public web data; pin schemas, rate-limit, and corroborate endpoint behavior with official NHL pages.",
+    "query_template": "NHL public API official stats schedule standings players teams for {topic} {actors}",
+    "allowed_by_default": true
+  },
+  {
+    "id": "sports-official-nfl-stats",
+    "name": "NFL Official Stats And Game Centers",
+    "category": "sports",
+    "source_type": "official_site",
+    "access": "public-no-key",
+    "freshness": "event dependent",
+    "history_depth": "NFL schedules, standings, game centers, team stats, player stats, injury reports, and final results where publicly posted",
+    "reliability_tier": "primary",
+    "license_notes": "Official NFL public pages; use for manual/attributed evidence and add a live adapter only after endpoint and usage terms review.",
+    "query_template": "NFL official stats standings injury game center for {topic} {actors}",
+    "allowed_by_default": true
+  },
+  {
     "id": "sports-balldontlie",
     "name": "BALLDONTLIE Sports API",
     "category": "sports",

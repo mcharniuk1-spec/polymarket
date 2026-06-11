@@ -28,7 +28,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Geist, Satoshi, "SF Pro Display", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .topbar {
@@ -80,6 +80,10 @@ select {
 
 button {
   cursor: pointer;
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:focus-visible,
@@ -218,6 +222,53 @@ main {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 15px;
+}
+
+.contract-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contract-grid article,
+.warning-list p {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.contract-grid span,
+.contract-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.contract-grid strong {
+  display: block;
+  margin: 7px 0;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.warning-list {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+}
+
+.warning-list .error {
+  border-color: #f0b8b8;
+  background: #fff1f1;
+  color: var(--negative);
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.8fr);
@@ -257,10 +308,12 @@ main {
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -470,6 +523,28 @@ td {
   background: var(--positive);
 }
 
+.chart-scroll,
+.heatmap-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chart-scroll .forecast-svg {
+  min-width: 520px;
+}
+
+.chart-scroll .model-scatter {
+  min-width: 560px;
+}
+
+.chart-scroll .model-progress-svg {
+  min-width: 680px;
+}
+
 .category-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -484,6 +559,59 @@ td {
 .category-card h3 {
   margin: 0 0 12px;
   text-transform: capitalize;
+}
+
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.readiness-card {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.readiness-card strong {
+  display: block;
+  margin-bottom: 10px;
+  text-transform: capitalize;
+}
+
+.readiness-wide {
+  grid-column: 1 / -1;
+}
+
+.entity-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.entity-chip-grid span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.entity-chip-grid em {
+  display: inline-block;
+  margin: 0 6px 6px 0;
+  padding: 5px 7px;
+  border: 1px solid #cfd8e5;
+  border-radius: 999px;
+  background: #fff;
+  color: #344054;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 dl {
@@ -675,15 +803,17 @@ dd {
 
 .process-step {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.process-step > span {
+.process-step > .step-marker,
+.process-step > span:first-child:not(.process-time) {
   display: grid;
   width: 30px;
   height: 30px;
@@ -692,6 +822,35 @@ dd {
   color: #fff;
   background: var(--accent);
   font-weight: 820;
+  line-height: 1;
+}
+
+.process-step-body {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.process-step-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.process-step-header strong {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.process-step-header time {
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .process-step h4 {
@@ -703,6 +862,7 @@ dd {
   margin: 0;
   color: #465366;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .step-links,
@@ -755,12 +915,24 @@ dd {
   overflow-wrap: anywhere;
 }
 
+.source-review small,
+.news-card small,
+.event-group small,
+.sub-bet small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .source-review.disabled {
   background: #f7f7fa;
 }
 
 .external-link,
-.local-link {
+.local-link,
+.artifact-links a {
   display: inline-flex;
   min-height: 30px;
   align-items: center;
@@ -780,6 +952,25 @@ dd {
 .local-link {
   color: #596273;
   overflow-wrap: anywhere;
+}
+
+.artifact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.artifact-links a {
+  margin-top: 0;
+  padding: 7px 10px;
+  color: #fff;
+  background: var(--accent);
+  text-decoration: none;
+}
+
+.daily-table-wrap table {
+  min-width: 1180px;
 }
 
 .monitor-grid,
@@ -920,6 +1111,7 @@ details.agent-card summary {
 .signal-card {
   padding: 14px;
   border-left: 5px solid #8a96a8;
+  min-width: 0;
 }
 
 .signal-card.bullish {
@@ -1001,6 +1193,40 @@ details.agent-card summary {
   padding: 10px;
   border-radius: 8px;
   background: #fbfcfe;
+}
+
+.analysis-disclosure {
+  min-width: 0;
+}
+
+.analysis-disclosure > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.analysis-disclosure > summary span,
+.analysis-disclosure > summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 820;
+}
+
+.analysis-disclosure > summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.analysis-body {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .signal-notes p {
@@ -1179,8 +1405,6 @@ details.agent-card summary {
 
 .multi-model-card,
 .news-corr-card {
-  display: grid;
-  gap: 10px;
   margin: 12px 0;
   padding: 12px;
   border: 1px solid var(--line);
@@ -1188,17 +1412,11 @@ details.agent-card summary {
   background: linear-gradient(135deg, #f8fafc, #eef5ff);
 }
 
-.multi-model-card header,
 .model-family-grid article,
 .model-output-grid article,
 .news-corr-card article {
   display: grid;
   gap: 5px;
-}
-
-.multi-model-card header {
-  grid-template-columns: minmax(0, 1fr) max-content;
-  align-items: center;
 }
 
 .multi-model-card p,
@@ -1211,12 +1429,13 @@ details.agent-card summary {
 
 .model-output-grid,
 .model-family-grid,
-.news-corr-card {
+.news-corr-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .model-output-grid,
-.model-family-grid {
+.model-family-grid,
+.news-corr-grid {
   display: grid;
   gap: 8px;
 }
@@ -1231,14 +1450,14 @@ details.agent-card summary {
 }
 
 .model-output-grid span,
-.news-corr-card span,
+.news-corr-grid article > span,
 .model-family-grid span {
   font-size: 17px;
   font-weight: 820;
 }
 
 .model-output-grid small,
-.news-corr-card small,
+.news-corr-grid small,
 .model-family-grid small {
   color: var(--muted);
   font-size: 11px;
@@ -1248,15 +1467,14 @@ details.agent-card summary {
 .news-corr-card ul {
   margin: 0;
   padding-left: 16px;
-  color: var(--text);
+  color: var(--ink);
   font-size: 12px;
 }
 
 @media (max-width: 760px) {
-  .multi-model-card header,
   .model-output-grid,
   .model-family-grid,
-  .news-corr-card {
+  .news-corr-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1285,7 +1503,7 @@ details.agent-card summary {
   border-radius: 999px;
   padding: 9px 12px;
   background: #fff;
-  color: var(--text);
+  color: var(--ink);
   font-weight: 760;
 }
 
@@ -1527,18 +1745,19 @@ details.agent-card summary {
 
 .correlation-heatmap {
   display: grid;
-  grid-template-columns: 28px repeat(var(--matrix-size), minmax(14px, 1fr));
+  grid-template-columns: 32px repeat(var(--matrix-size), minmax(18px, 26px));
   gap: 3px;
   align-items: center;
-  max-width: 760px;
-  overflow: auto;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
 }
 
 .matrix-label,
 .matrix-corner,
 .matrix-cell {
-  min-width: 14px;
-  min-height: 14px;
+  min-width: 18px;
+  min-height: 18px;
 }
 
 .matrix-label {
@@ -1568,6 +1787,7 @@ details.agent-card summary {
   padding-left: 18px;
   color: #465366;
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .correlation-pairs {
@@ -1701,7 +1921,11 @@ pre {
   .sub-bets,
   .model-health-list,
   .model-diagnostics-grid,
-  .model-progress-stats {
+  .model-progress-stats,
+  .readiness-grid,
+  .entity-chip-grid,
+  .contract-grid,
+  .contract-grid.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1730,6 +1954,118 @@ pre {
     padding: 16px;
   }
 
+  .portfolio-strip {
+    position: static;
+    top: auto;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-inline: -16px;
+    overflow-x: auto;
+    padding: 0 16px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .panel-header span {
+    text-align: left;
+  }
+
+  .artifact-links {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .metric {
+    min-height: auto;
+  }
+
+  .detail-grid {
+    padding: 10px;
+  }
+
+  .detail-main,
+  .detail-side,
+  .detail-section,
+  .agent-card {
+    padding: 12px;
+  }
+
+  dl,
+  .compact-dl,
+  .lifecycle-dl,
+  .queue-state dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  dt {
+    margin-top: 4px;
+  }
+
+  .process-step {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .process-step > .step-marker,
+  .process-step > span:first-child:not(.process-time) {
+    width: 28px;
+    height: 28px;
+  }
+
+  .process-step-header {
+    display: grid;
+    gap: 3px;
+  }
+
+  .analysis-disclosure > summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analysis-disclosure > summary small {
+    text-align: left;
+  }
+
+  .mini-chart,
+  .odds-chart {
+    min-height: 110px;
+    padding: 12px;
+  }
+
+  .chart-scroll .forecast-svg {
+    min-width: 500px;
+  }
+
+  .chart-scroll .model-scatter {
+    min-width: 540px;
+  }
+
+  .chart-scroll .model-progress-svg {
+    min-width: 620px;
+  }
+
+  .correlation-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .correlation-pair strong {
+    grid-row: auto;
+  }
+
   .metric-grid,
   .sports-metrics,
   .category-grid,
@@ -1747,7 +2083,11 @@ pre {
   .model-health-list,
   .model-diagnostics-grid,
   .weight-columns,
-  .model-progress-stats {
+  .model-progress-stats,
+  .readiness-grid,
+  .entity-chip-grid,
+  .contract-grid,
+  .contract-grid.compact {
     grid-template-columns: 1fr;
   }
 

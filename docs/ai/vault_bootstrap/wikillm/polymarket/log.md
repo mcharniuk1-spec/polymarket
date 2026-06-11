@@ -1,4 +1,13 @@
 # Log
 
 - 2026-05-25: Bootstrapped repo-local AGENTS/CLAUDE/Cursor rules, Nexus MCP config, Graphify output, validation script, and staged Obsidian/WikiLLM project files.
-
+- 2026-06-10: Completed local fixture-first analytical-system finish pass with schema contracts, three-agent orchestration, model disagreement, paper-only risk gates, dashboard contract APIs, goal audit, and validation. Overall goal remains externally incomplete until DB migration, production cron, Vercel dashboard, and approved live-source validation are proven.
+- 2026-06-10: Added explicit Postgres migration apply/verify path with `schema_migrations` marker, required-table checks, and database URL masking. Real DB application remains pending approved credentials/environment.
+- 2026-06-10: Added parser-gated read-only live external adapter path and model filtering so source-health rows cannot strengthen decisions. Live network/source validation remains pending.
+- 2026-06-10: Added production-readiness verifier, live read-only scheduled daily/collector workflow checks, and scoped `/api/all` compatibility output that disables legacy sports root records. Goal remains incomplete only on external proof: DB apply, production cron logs, Vercel deployment, and approved live-source validation.
+- 2026-06-10: Tightened runtime scope by removing the visible sports backtest dashboard page, disabling legacy sports API route payloads, making shared dashboard payloads Polymarket-only, and adding a production-readiness `runtime_scope_boundary` check.
+- 2026-06-10: Added contract aliases `/api/performance`, `/api/runs/latest`, and `/api/runs/history`, plus tests and production-readiness checks so run status/history and performance are first-class dashboard API surfaces.
+- 2026-06-10: Added `external-proof-bundle` CLI and module to produce a no-action, secret-safe checklist for the remaining approval-gated external proof: Postgres apply, durable writes, live sources, Vercel smoke, and production cron logs.
+- 2026-06-10: Tightened goal-audit from file-existence checks to requirement-level evidence checks, added regression assertions, and reran local validation. Local contract is proven for 10 requirement groups; overall goal remains incomplete pending approved external proof.
+- 2026-06-11: Deployed the dashboard to Vercel production, added Hobby-compatible Vercel daily cron automation, configured `CRON_SECRET` without storing the value, limited deployed functions to 12 with `.vercelignore`, and hardened live scope filtering after a sports spread market leaked into stored live output.
+- 2026-06-11: Captured Vercel dashboard smoke proof in `docs/ai/proofs/20260611_vercel_dashboard_smoke.json` and updated goal audit to 11 proven, 2 partial, 2 missing. Remaining completion proof requires approved Postgres migration/durable-write evidence and inspected production scheduled-run logs.

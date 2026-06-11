@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
+from collections import Counter
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 from statistics import mean
 from typing import Any
 
 from .agents import ACTIVE_CATEGORIES
 from .dashboard_data import build_dashboard_payload
+from .dashboard_enrichment import enrich_multi_agent_payload
+from .external_sources import build_external_data_readiness
 from .intelligence import run_intelligence_cycle
 from .odds_math import clamp
+from .research_scope import AGENT_CONTRACT, is_active_category
 from .state_store import JsonStateStore, default_store
 
 
@@ -20,37 +26,23 @@ MODEL_STATE_KEY = "model_state.json"
 CORRELATION_KEY = "correlation_matrices.json"
 LATEST_INTELLIGENCE_KEY = "latest_intelligence.json"
 LATEST_DASHBOARD_KEY = "dashboard_latest.json"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 QUESTION_ARCHETYPES: dict[str, list[dict[str, Any]]] = {
-    "sports": [
-        {"id": "sports_game_winner", "label": "Daily game winner", "keywords": ["beat", "winner", "fixture"]},
-        {"id": "sports_threshold", "label": "Daily team/player threshold", "keywords": ["threshold", "points", "player", "team"]},
-        {"id": "sports_advancement", "label": "Daily standings/advancement", "keywords": ["advance", "standings", "league"]},
-    ],
-    "geopolitics": [
-        {"id": "geopolitics_ceasefire", "label": "Ceasefire/escalation", "keywords": ["ceasefire", "escalation", "breakthrough"]},
-        {"id": "geopolitics_election_legal", "label": "Election/legal deadline", "keywords": ["election", "poll", "legal", "deadline"]},
-        {"id": "geopolitics_policy", "label": "Sanctions/policy action", "keywords": ["sanctions", "policy", "diplomacy"]},
-    ],
-    "crypto": [
-        {"id": "crypto_btc_threshold", "label": "BTC threshold", "keywords": ["bitcoin", "btc"]},
-        {"id": "crypto_major_token", "label": "ETH/SOL/token threshold", "keywords": ["ethereum", "solana", "token"]},
-        {"id": "crypto_flow_regulatory", "label": "ETF/volume/regulatory", "keywords": ["etf", "volume", "sec", "policy"]},
-    ],
-    "macro": [
+    "macroeconomics": [
         {"id": "macro_rates_yields", "label": "Rates/yields", "keywords": ["fed", "rates", "yields", "treasury"]},
         {"id": "macro_inflation_jobs", "label": "Inflation/jobs/oil/gold", "keywords": ["cpi", "inflation", "unemployment", "oil", "gold"]},
         {"id": "macro_release", "label": "Scheduled economic release", "keywords": ["release", "consensus", "window"]},
     ],
-    "weather": [
-        {"id": "weather_temperature", "label": "Temperature threshold", "keywords": ["temperature", "heat", "cold"]},
-        {"id": "weather_precip_wind", "label": "Precipitation/wind/hurricane", "keywords": ["rainfall", "snowfall", "wind", "hurricane"]},
-        {"id": "weather_alert", "label": "Official alert/disaster", "keywords": ["alert", "wildfire", "disaster"]},
+    "politics": [
+        {"id": "politics_ceasefire", "label": "Ceasefire/escalation", "keywords": ["ceasefire", "escalation", "breakthrough"]},
+        {"id": "politics_election_legal", "label": "Election/legal deadline", "keywords": ["election", "poll", "legal", "deadline"]},
+        {"id": "politics_policy", "label": "Sanctions/policy action", "keywords": ["sanctions", "policy", "diplomacy"]},
     ],
-    "culture": [
-        {"id": "culture_box_streaming", "label": "Box office/streaming", "keywords": ["box office", "streaming"]},
-        {"id": "culture_awards_event", "label": "Awards/event", "keywords": ["awards", "event"]},
-        {"id": "culture_tech_social", "label": "Tech/social milestone", "keywords": ["tech", "launch", "social"]},
+    "stocks_trade": [
+        {"id": "stocks_close_threshold", "label": "Index/equity close threshold", "keywords": ["close", "stock", "shares", "nasdaq", "spy"]},
+        {"id": "trade_policy_release", "label": "Tariff/trade-policy action", "keywords": ["tariff", "trade", "wto", "ustr", "customs"]},
+        {"id": "company_filing_event", "label": "Company filing/event", "keywords": ["sec", "filing", "earnings", "guidance"]},
     ],
 }
 
@@ -225,7 +217,7 @@ def _attach_multi_model_forecasts(
             continue
         candidate = item["candidate"]
         features = _features(item)
-        question_id = classify_question(candidate.get("category", "culture"), candidate.get("market_title", ""))
+        question_id = classify_question(candidate.get("category", "macroeconomics"), candidate.get("market_title", ""))
         global_model = models.get("global", {"weights": {key: 0.0 for key in FEATURE_KEYS}, "sampleCount": 0})
         category_model = models.get(f"category:{candidate.get('category')}", global_model)
         question_model = models.get(f"question:{question_id}", category_model)
@@ -496,12 +488,14 @@ def _correlated_odds_signal(
     weight_sum = 0.0
     related = []
     for pair in related_pairs:
+        context_weight = _safe_float(pair.get("contextWeight"))
+        if abs(context_weight) <= 1e-9 or pair.get("influenceRole") != "context_instrument":
+            continue
         other = candidates_by_id.get(pair.get("other"))
         if not other:
             continue
         deltas = _price_deltas(other.get("odds_history", []))
         other_delta = deltas[-1] if deltas else 0.0
-        context_weight = _safe_float(pair.get("contextWeight"))
         weighted += context_weight * clamp(other_delta * 10, -1.0, 1.0)
         weight_sum += abs(context_weight)
         related.append(
@@ -510,6 +504,8 @@ def _correlated_odds_signal(
                 "title": pair.get("otherTitle") or other.get("market_title"),
                 "correlation": pair.get("correlation"),
                 "contextWeight": round(context_weight, 4),
+                "overlapCount": pair.get("overlapCount"),
+                "historySourceClass": pair.get("historySourceClass"),
                 "otherProbabilityDelta": round(other_delta, 4),
             }
         )
@@ -606,13 +602,18 @@ def run_ml_update(
     # cannot double-train on the same historical examples.
     models: dict[str, Any] = {}
     examples = []
+    candidate_rows: list[dict[str, Any]] = []
     for run in runs:
         snapshot = (extra_snapshots or {}).get(run["id"]) or state_store.read_json(f"collection_runs/{run['id']}.json")
         if not snapshot:
             continue
         for item in snapshot.get("dashboard", {}).get("multi_agent", {}).get("recommendations", []):
+            if isinstance(item.get("candidate"), dict):
+                candidate_rows.append(item["candidate"])
             examples.append(_example_from_recommendation(run, item))
     updated_models = _update_models(models, examples)
+    correlations = build_correlation_matrices(runs, state_store, extra_snapshots=extra_snapshots)
+    external_readiness = build_external_data_readiness(candidate_rows, decision_at=iso_now())
     model_state = {
         "schema_version": 1,
         "updatedAt": iso_now(),
@@ -623,8 +624,9 @@ def run_ml_update(
         "health": _model_health(updated_models, examples),
         "diagnostics": _model_diagnostics(updated_models, examples),
         "outputFamilies": _output_families(len(examples)),
+        "leakageControls": _leakage_controls(examples, candidate_rows, correlations),
+        "externalDataReadiness": external_readiness,
     }
-    correlations = build_correlation_matrices(runs, state_store, extra_snapshots=extra_snapshots)
     model_write = state_store.write_json(MODEL_STATE_KEY, model_state)
     correlation_write = state_store.write_json(CORRELATION_KEY, correlations)
     return {
@@ -654,7 +656,172 @@ def load_correlations(store: JsonStateStore | None = None) -> dict[str, Any]:
 
 def load_latest_dashboard(store: JsonStateStore | None = None) -> dict[str, Any] | None:
     payload = (store or default_store()).read_json(LATEST_DASHBOARD_KEY)
-    return payload if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    recommendations = payload.get("multi_agent", {}).get("recommendations", [])
+    if any(not is_active_category(item.get("candidate", {}).get("category")) for item in recommendations):
+        return None
+    return payload
+
+
+def _latest_full_scan_dashboard(base_payload: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    path = REPO_ROOT / "data" / "generated" / "full_scan" / "latest_full_scan.json"
+    if not path.exists():
+        return None
+    try:
+        full_scan = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    summary = full_scan.get("summary", {})
+    top_rows = full_scan.get("top100", [])
+    if not top_rows:
+        return None
+    if any(not is_active_category(row.get("category")) for row in top_rows):
+        return None
+    recommendations = [_recommendation_from_full_scan_row(row) for row in top_rows]
+    approved = [item for item in recommendations if item["decision"] == "PAPER_BET" and float(item.get("stake_units", 0.0)) > 0.0]
+    if not approved:
+        return None
+    full_scan_created = str(summary.get("scanStartedAt") or "")
+    base_created = str((base_payload or {}).get("multi_agent", {}).get("created_at") or "")
+    base_metrics = (base_payload or {}).get("multi_agent", {}).get("metrics", {})
+    base_staked = float(base_metrics.get("total_staked_units") or 0.0)
+    full_scan_staked = sum(float(item.get("stake_units", 0.0)) for item in approved)
+    if base_created and full_scan_created and base_created > full_scan_created and base_staked >= full_scan_staked:
+        return None
+
+    metrics = dict(full_scan.get("multiAgent", {}).get("metrics") or {})
+    metrics.update(
+        {
+            "research_only": True,
+            "mode": "paper",
+            "paper_trading_only": True,
+            "active_sections": list(ACTIVE_CATEGORIES),
+            "agent_contract_version": "three_agent_v1",
+            "reliability_labels": AGENT_CONTRACT["reliability_labels"],
+            "starting_bankroll_units": 100.0,
+            "deployment_budget_units": 100.0,
+            "ending_bankroll_units": 100.0,
+            "candidate_count": int(summary.get("candidateOutcomeCount") or metrics.get("candidate_count") or len(recommendations)),
+            "paper_bet_count": len(approved),
+            "watchlist_count": int(summary.get("watchlistCount") or metrics.get("watchlist_count") or 0),
+            "rejected_count": int(summary.get("rejectedCount") or metrics.get("rejected_count") or 0),
+            "total_staked_units": round(full_scan_staked, 4),
+            "unallocated_budget_units": round(max(100.0 - full_scan_staked, 0.0), 4),
+            "total_pnl_units": 0.0,
+            "simulated_roi": 0.0,
+            "win_rate": 0.0,
+            "wins": 0,
+            "losses": 0,
+        }
+    )
+    metrics["average_expected_value"] = round(mean([float(item["expected_value"]) for item in approved]), 4) if approved else 0.0
+    metrics["average_decimal_odds"] = round(mean([float(item["candidate"]["decimal_odds"]) for item in approved]), 4) if approved else 0.0
+
+    multi_agent = {
+        "run_id": f"dashboard-full-scan-{full_scan_created}",
+        "created_at": full_scan_created,
+        "mode": "paper",
+        "source_mode": "live_full_scan",
+        "source_note": (
+            f"latest full scan approved book: {len(approved)} approved paper bets, "
+            f"{metrics['total_staked_units']:.2f}/100.00 paper units staked; "
+            f"100-approved target met={bool(summary.get('topRecommendationTargetMet'))}"
+        ),
+        "candidates": [],
+        "recommendations": recommendations,
+        "paper_bets": approved,
+        "watchlist": [],
+        "rejected": [],
+        "top_bets": approved,
+        "category_stats": _full_scan_category_stats(recommendations),
+        "agent_performance": full_scan.get("multiAgent", {}).get("agent_performance", []),
+        "metrics": metrics,
+        "bankroll_curve": [{"label": "start", "bankroll": 100.0}],
+        "mistakes": [],
+        "agent_contract": AGENT_CONTRACT,
+        "full_scan_summary": summary,
+    }
+    enriched = enrich_multi_agent_payload(multi_agent)
+    payload = dict(base_payload or {})
+    payload.setdefault("metrics", {})
+    payload.setdefault("forecasts", [])
+    payload.setdefault("trades", [])
+    payload.setdefault("odds_history", [])
+    payload["multi_agent"] = enriched
+    payload["refresh_policy"] = {
+        "browser_interval_seconds": 15 * 60,
+        "server_cache_seconds": 15 * 60,
+        "source_mode": "live_full_scan",
+        "target_count": int(summary.get("candidateOutcomeCount") or len(recommendations)),
+        "live_fetch_default": True,
+    }
+    return payload
+
+
+def _recommendation_from_full_scan_row(row: dict[str, Any]) -> dict[str, Any]:
+    price = max(float(row.get("market_price") or 0.0), 0.01)
+    candidate = {
+        "candidate_id": row.get("candidate_id"),
+        "event_id": row.get("event_id"),
+        "category": row.get("category"),
+        "subcategory": row.get("subcategory"),
+        "market_title": row.get("market_title"),
+        "outcome": row.get("outcome"),
+        "source_url": row.get("source_url"),
+        "published_at": row.get("published_at"),
+        "updated_at": row.get("published_at"),
+        "end_time": row.get("end_time"),
+        "price": price,
+        "decimal_odds": round(1.0 / price, 4),
+        "spread": 0.0,
+        "liquidity": 0.0,
+        "volume_24h": 0.0,
+        "source": "polymarket-full-scan",
+        "token_id": row.get("token_id"),
+        "resolution_notes": "Full-scan approved paper recommendation; verify settlement wording before any future research cycle.",
+        "resolved_outcome": None,
+        "odds_history": [],
+        "news_items": [],
+        "stats": {},
+        "actors": [],
+    }
+    return {
+        "candidate": candidate,
+        "assessments": {},
+        "blended_probability": float(row.get("forecast_probability") or 0.0),
+        "confidence": float(row.get("confidence") or 0.0),
+        "edge": float(row.get("edge") or 0.0),
+        "expected_value": float(row.get("expected_value") or 0.0),
+        "risk_tier": row.get("risk_tier") or "HIGH",
+        "decision": row.get("decision") or "PAPER_BET",
+        "stake_units": float(row.get("stake_units") or 0.0),
+        "reason": row.get("reason") or "Full-scan approved paper bet.",
+        "failure_conditions": row.get("failure_conditions") or [],
+        "rank_score": float(row.get("rank_score") or 0.0),
+        "outcome": "PENDING",
+        "pnl_units": 0.0,
+    }
+
+
+def _full_scan_category_stats(recommendations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for category in sorted({str(item["candidate"]["category"]) for item in recommendations}):
+        group = [item for item in recommendations if str(item["candidate"]["category"]) == category]
+        bets = [item for item in group if item["decision"] == "PAPER_BET"]
+        rows.append(
+            {
+                "category": category,
+                "candidate_count": len(group),
+                "paper_bet_count": len(bets),
+                "watchlist_count": sum(1 for item in group if item["decision"] == "WATCHLIST"),
+                "rejected_count": sum(1 for item in group if item["decision"] == "REJECTED"),
+                "average_expected_value": round(mean([float(item["expected_value"]) for item in group]), 4) if group else 0.0,
+                "average_confidence": round(mean([float(item["confidence"]) for item in group]), 4) if group else 0.0,
+                "total_stake_units": round(sum(float(item["stake_units"]) for item in bets), 4),
+            }
+        )
+    return rows
 
 
 def _append_run_history(previous_runs: list[dict[str, Any]], snapshot: dict[str, Any]) -> list[dict[str, Any]]:
@@ -747,7 +914,7 @@ def _empty_model_state() -> dict[str, Any]:
 def _example_from_recommendation(run: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     candidate = item["candidate"]
     features = _features(item)
-    question_id = classify_question(candidate.get("category", "culture"), candidate.get("market_title", ""))
+    question_id = classify_question(candidate.get("category", "macroeconomics"), candidate.get("market_title", ""))
     return {
         "runId": run["id"],
         "timestamp": run.get("cycleStartedAt") or run.get("createdAt"),
@@ -790,7 +957,7 @@ def classify_question(category: str, title: str) -> str:
     for spec in QUESTION_ARCHETYPES.get(category, []):
         if any(keyword in lowered for keyword in spec["keywords"]):
             return spec["id"]
-    specs = QUESTION_ARCHETYPES.get(category) or QUESTION_ARCHETYPES["culture"]
+    specs = QUESTION_ARCHETYPES.get(category) or QUESTION_ARCHETYPES["macroeconomics"]
     digest = int(hashlib.sha1(lowered.encode("utf-8")).hexdigest()[:4], 16)
     return specs[digest % len(specs)]["id"]
 
@@ -880,6 +1047,42 @@ def _model_diagnostics(models: dict[str, Any], examples: list[dict[str, Any]]) -
     }
 
 
+def _leakage_controls(
+    examples: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    correlations: dict[str, Any],
+) -> dict[str, Any]:
+    labeled = [example for example in examples if example.get("label") is not None]
+    role_counts: Counter[str] = Counter()
+    source_counts: Counter[str] = Counter()
+    sparse_pairs = 0
+    for category in correlations.get("categories", []):
+        for pair in category.get("pairs", []):
+            role_counts[str(pair.get("influenceRole") or "legacy_unknown")] += 1
+            source_counts[str(pair.get("historySourceClass") or "legacy_unknown")] += 1
+            sparse_pairs += 1 if pair.get("sparse") else 0
+    history_counts: Counter[str] = Counter(
+        _history_source_class(candidate.get("odds_history", []), []) for candidate in candidates
+    )
+    return {
+        "knownLabelTrainingOnly": True,
+        "exampleCount": len(examples),
+        "labeledExampleCount": len(labeled),
+        "pendingOrUnlabeledExampleCount": len(examples) - len(labeled),
+        "candidateHistorySourceCounts": dict(history_counts),
+        "correlationInfluenceRoleCounts": dict(role_counts),
+        "correlationHistorySourceCounts": dict(source_counts),
+        "sparseCorrelationPairCount": sparse_pairs,
+        "rules": {
+            "asOfTimestamps": "Features must be observed/released/fetched no later than the decision timestamp.",
+            "sameEventMarkets": "Same-event or mutually exclusive markets are exposure guardrails only.",
+            "fallbackHistory": "Gamma-derived, fixture, and snapshot-only histories are diagnostic only for correlations.",
+            "relatedOdds": "Related Polymarket odds are contextual instruments only when the entity link is strong, overlap is adequate, and history is observed.",
+            "externalSeries": "External macroeconomic, political, stocks, and trade series require source id, URL, release time, and as-of storage before ML use.",
+        },
+    }
+
+
 def _top_weights(weights: dict[str, float], *, reverse: bool) -> list[dict[str, Any]]:
     rows = [{"feature": key, "weight": round(float(value), 6)} for key, value in weights.items()]
     rows.sort(key=lambda row: row["weight"], reverse=reverse)
@@ -913,7 +1116,7 @@ def build_correlation_matrices(
             continue
         for item in snapshot.get("dashboard", {}).get("multi_agent", {}).get("recommendations", []):
             candidate = item["candidate"]
-            category = candidate.get("category", "culture")
+            category = candidate.get("category", "macroeconomics")
             market_id = candidate.get("candidate_id")
             category_markets.setdefault(category, {})[market_id] = candidate
     categories = []
@@ -979,15 +1182,18 @@ def _correlation_matrix(markets: list[dict[str, Any]], pairs: list[dict[str, Any
 def _correlation_pairs(markets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     pairs = []
     for left_index, left in enumerate(markets):
-        left_delta = _price_deltas(left.get("odds_history", []))
         for right in markets[left_index + 1 :]:
-            right_delta = _price_deltas(right.get("odds_history", []))
-            corr = _pearson(left_delta, right_delta)
+            overlap = _overlapping_price_delta_pairs(left.get("odds_history", []), right.get("odds_history", []))
+            corr = _pearson([row["left"] for row in overlap], [row["right"] for row in overlap])
             if corr is None:
                 continue
             related = _relatedness(left, right)
-            if related <= 0.0 and abs(corr) < 0.45:
+            source_class = _history_source_class(left.get("odds_history", []), right.get("odds_history", []))
+            role = _correlation_influence_role(left, right, related, source_class, len(overlap))
+            context_weight = _correlation_context_weight(corr, related, role, source_class, len(overlap))
+            if context_weight == 0.0 and related <= 0.0 and abs(corr) < 0.80:
                 continue
+            interval = _fisher_interval(corr, len(overlap))
             pairs.append(
                 {
                     "left": left.get("candidate_id"),
@@ -997,7 +1203,14 @@ def _correlation_pairs(markets: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "correlation": round(corr, 4),
                     "relatedness": round(related, 4),
                     "sharedEvent": left.get("event_id") == right.get("event_id"),
-                    "contextWeight": round(corr * (0.25 + related * 0.35), 4),
+                    "overlapCount": len(overlap),
+                    "window": _overlap_window(overlap),
+                    "historySourceClass": source_class,
+                    "influenceRole": role,
+                    "endogeneityRisk": _endogeneity_risk(left, right, related, source_class),
+                    "contextWeight": round(context_weight, 4),
+                    "fisherZInterval": interval,
+                    "sparse": len(overlap) < 6,
                 }
             )
     return sorted(pairs, key=lambda row: (abs(row["correlation"]), row["relatedness"]), reverse=True)
@@ -1006,6 +1219,121 @@ def _correlation_pairs(markets: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _price_deltas(history: list[dict[str, Any]]) -> list[float]:
     prices = [float(row.get("price", 0.0)) for row in history]
     return [round(prices[index] - prices[index - 1], 6) for index in range(1, len(prices))]
+
+
+def _price_delta_points(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    points = [
+        {
+            "time": _time_bucket(row.get("time")),
+            "price": _safe_float(row.get("price")),
+            "source": str(row.get("source") or "unknown"),
+        }
+        for row in history
+        if row.get("time") is not None
+    ]
+    points.sort(key=lambda row: row["time"])
+    rows = []
+    for previous, current in zip(points, points[1:]):
+        if current["time"] == previous["time"]:
+            continue
+        rows.append(
+            {
+                "time": current["time"],
+                "delta": round(current["price"] - previous["price"], 6),
+                "source": current["source"],
+            }
+        )
+    return rows
+
+
+def _overlapping_price_delta_pairs(left_history: list[dict[str, Any]], right_history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    left_by_time = {row["time"]: row for row in _price_delta_points(left_history)}
+    right_by_time = {row["time"]: row for row in _price_delta_points(right_history)}
+    rows = []
+    for time_key in sorted(set(left_by_time) & set(right_by_time)):
+        rows.append(
+            {
+                "time": time_key,
+                "left": left_by_time[time_key]["delta"],
+                "right": right_by_time[time_key]["delta"],
+                "leftSource": left_by_time[time_key]["source"],
+                "rightSource": right_by_time[time_key]["source"],
+            }
+        )
+    return rows
+
+
+def _time_bucket(value: Any) -> str:
+    return str(value or "").replace("+00:00", "Z")[:16]
+
+
+def _history_source_class(left_history: list[dict[str, Any]], right_history: list[dict[str, Any]]) -> str:
+    sources = {str(row.get("source") or "") for row in [*left_history, *right_history]}
+    if sources and sources <= {"clob-prices-history", "gamma-current"}:
+        return "observed_clob"
+    if any(source.startswith("gamma-") for source in sources):
+        return "fallback_derived_gamma"
+    if any(source in {"fixture-history", "snapshot-only"} for source in sources):
+        return "fallback_derived_fixture"
+    return "mixed_or_unknown"
+
+
+def _correlation_influence_role(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    relatedness: float,
+    source_class: str,
+    overlap_count: int,
+) -> str:
+    if left.get("event_id") == right.get("event_id"):
+        return "exposure_only_endogenous_sibling"
+    if overlap_count < 3:
+        return "diagnostic_only_sparse_overlap"
+    if source_class.startswith("fallback_derived"):
+        return "diagnostic_only_fallback_history"
+    if relatedness < 0.12:
+        return "diagnostic_only_weak_link"
+    return "context_instrument"
+
+
+def _correlation_context_weight(
+    corr: float,
+    relatedness: float,
+    role: str,
+    source_class: str,
+    overlap_count: int,
+) -> float:
+    if role != "context_instrument":
+        return 0.0
+    overlap_weight = clamp((overlap_count - 2) / 18.0, 0.0, 1.0)
+    source_weight = 1.0 if source_class == "observed_clob" else 0.35
+    return round(corr * relatedness * 0.35 * overlap_weight * source_weight, 6)
+
+
+def _endogeneity_risk(left: dict[str, Any], right: dict[str, Any], relatedness: float, source_class: str) -> str:
+    if left.get("event_id") == right.get("event_id"):
+        return "high_same_event_or_mutually_exclusive"
+    if source_class.startswith("fallback_derived"):
+        return "high_fallback_history"
+    if relatedness < 0.12:
+        return "medium_weak_entity_link"
+    return "managed_context_only"
+
+
+def _overlap_window(overlap: list[dict[str, Any]]) -> dict[str, Any]:
+    if not overlap:
+        return {"first": None, "last": None}
+    return {"first": overlap[0]["time"], "last": overlap[-1]["time"]}
+
+
+def _fisher_interval(corr: float, overlap_count: int) -> dict[str, Any] | None:
+    if overlap_count < 4 or abs(corr) >= 0.999999:
+        return None
+    z_value = math.atanh(corr)
+    standard_error = 1.0 / math.sqrt(max(overlap_count - 3, 1))
+    lower = math.tanh(z_value - 1.96 * standard_error)
+    upper = math.tanh(z_value + 1.96 * standard_error)
+    return {"lower": round(lower, 4), "upper": round(upper, 4), "confidence": 0.95}
 
 
 def _pearson(left: list[float], right: list[float]) -> float | None:

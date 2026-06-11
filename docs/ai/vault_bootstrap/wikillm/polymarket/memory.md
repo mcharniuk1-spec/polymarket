@@ -17,3 +17,10 @@
   - FACT: live `toolManager_getTools` timed out on 2026-05-25.
 - Implication: Future runs can use repo config readiness, but must validate live Nexus before performing vault actions through MCP.
 
+## Pattern 3
+
+- Pattern: Local fixture-first validation is not the same as completing the full Polymarket system goal.
+- Evidence:
+  - FACT: `python3 -m sports_edge.cli goal-audit` reports 10 proven, 2 partial, and 3 missing requirements after the 2026-06-10 finish pass.
+  - FACT: Postgres migration application, production cron success, Vercel dashboard verification, and approved live-source parsing were not performed in that run.
+- Implication: Future operators should use `goal-audit` before claiming completion and should only mark the goal complete after external DB/deployment/live-source proof exists.

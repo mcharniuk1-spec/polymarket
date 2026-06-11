@@ -2,24 +2,70 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from .agents import MultiAgentPipeline
-from .backtesting import Backtester
 from .codex_queue import drain_codex_queue, queue_summary
-from .dashboard_enrichment import enrich_multi_agent_payload
+from .dashboard_api import (
+    legacy_scope_disabled_payload,
+    load_scoped_compat_dashboard,
+    runs_history_payload,
+    runs_latest_payload,
+    section_payload,
+)
+from .dashboard_data import build_dashboard_payload, build_report_text
 from .intelligence import load_latest_intelligence, run_intelligence_cycle
-from .managed_pipeline import load_correlations, load_model_state, load_run_history, run_managed_cycle
-from .odds_ingestion import OddsIngestion
-from .odds_movement import OddsMovementAnalyzer
-from .reporting import PerformanceReporter, multi_agent_payload, report_payload
+from .managed_pipeline import load_correlations, load_latest_dashboard, load_model_state, load_run_history, run_managed_cycle
+from .orchestrator import CollectorRunConfig, DailyRunConfig, run_collector, run_daily_analysis
 
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
-REPORT_PATH = ROOT / "reports/performance_report.md"
+CONTRACT_API_ROUTES = {
+    "/api/status": "status",
+    "/api/freshness": "freshness",
+    "/api/context": "context",
+    "/api/candidates": "candidates",
+    "/api/decisions": "decisions",
+    "/api/models": "models",
+    "/api/sources": "sources",
+    "/api/portfolio": "portfolio",
+    "/api/performance": "performance",
+    "/api/performance-contract": "performance",
+    "/api/warnings": "warnings",
+    "/api/dashboard-contract": "all",
+    "/api/runs/latest": "runs_latest",
+    "/api/runs/history": "runs_history",
+}
+
+
+def health_payload() -> dict[str, object]:
+    durable_storage_configured = any(
+        os.environ.get(key)
+        for key in (
+            "DATABASE_URL",
+            "POSTGRES_URL",
+            "POSTGRES_PRISMA_URL",
+            "POSTGRES_URL_NON_POOLING",
+            "BLOB_READ_WRITE_TOKEN",
+        )
+    )
+    return {
+        "ok": True,
+        "research_only": True,
+        "service": "polymarket-research-dashboard",
+        "runtime": "local",
+        "durable_storage_configured": durable_storage_configured,
+        "cron_secret_configured": bool(os.environ.get("CRON_SECRET")),
+        "safety": {
+            "walletActions": False,
+            "orderExecution": False,
+            "credentialStorage": False,
+            "realMoneyBetting": False,
+        },
+    }
 
 
 class DashboardState:
@@ -27,37 +73,34 @@ class DashboardState:
         self.refresh()
 
     def refresh(self, source_mode: str = "fixture", target_count: int = 300) -> None:
-        self.result = Backtester().run(write_log=True)
-        PerformanceReporter().write(self.result)
-        self.multi_agent_result = MultiAgentPipeline().run(source_mode=source_mode, target_count=target_count)
-        PerformanceReporter().write_multi_agent(self.multi_agent_result)
+        self.payload_data = build_dashboard_payload(source_mode=source_mode, target_count=target_count, use_cache=False)
         self.intelligence_payload = run_intelligence_cycle(
             cycle_type="post_ingestion",
             source_mode=source_mode,
             target_count=target_count,
             persist=True,
             allow_codex=True,
-            dashboard_payload={"multi_agent": enrich_multi_agent_payload(multi_agent_payload(self.multi_agent_result))},
+            dashboard_payload={"multi_agent": self.payload_data.get("multi_agent", {})},
         )
-        all_snapshots = []
-        for snapshots in OddsIngestion().by_event().values():
-            all_snapshots.extend(snapshots)
-        self.odds_history = OddsMovementAnalyzer.history_rows(all_snapshots)
 
     def payload(self) -> dict[str, object]:
-        payload = report_payload(self.result)
-        payload["odds_history"] = self.odds_history
-        payload["multi_agent"] = enrich_multi_agent_payload(multi_agent_payload(self.multi_agent_result))
-        return payload
+        return self.payload_data
 
 
-STATE = DashboardState()
+STATE: DashboardState | None = None
+
+
+def get_state() -> DashboardState:
+    global STATE
+    if STATE is None:
+        STATE = DashboardState()
+    return STATE
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         route = urlparse(self.path).path
-        if route in {"/", "/styles.css", "/app.js", "/favicon.ico", "/api/summary", "/api/forecasts", "/api/performance", "/api/odds-history", "/api/report", "/api/all", "/api/multi-agent", "/api/intelligence", "/api/intelligence-refresh", "/api/cron-refresh", "/api/codex-queue", "/api/run-history", "/api/model-state", "/api/correlation-matrix"}:
+        if route.startswith("/downloads/") or route in {"/", "/styles.css", "/app.js", "/favicon.ico", "/api/health", "/api/summary", "/api/forecasts", "/api/odds-history", "/api/report", "/api/all", "/api/multi-agent", "/api/intelligence", "/api/intelligence-refresh", "/api/cron-refresh", "/api/cron-collector", "/api/cron-daily", "/api/codex-queue", "/api/run-history", "/api/model-state", "/api/correlation-matrix", *CONTRACT_API_ROUTES}:
             self.send_response(200)
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
@@ -75,32 +118,44 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
         if route == "/favicon.ico":
             return self._send_file(WEB_DIR / "favicon.svg", "image/svg+xml")
+        if route.startswith("/downloads/"):
+            return self._send_download(route)
+        if route == "/api/health":
+            return self._send_json(health_payload())
         if route == "/api/summary":
-            return self._send_json({"metrics": STATE.result.metrics})
+            return self._send_json(legacy_scope_disabled_payload("summary"))
         if route == "/api/forecasts":
-            return self._send_json({"forecasts": [item.to_dict() for item in STATE.result.forecasts]})
-        if route == "/api/performance":
-            return self._send_json({"metrics": STATE.result.metrics, "trades": [item.to_dict() for item in STATE.result.trades]})
+            return self._send_json(legacy_scope_disabled_payload("forecasts"))
         if route == "/api/odds-history":
-            return self._send_json({"odds_history": STATE.odds_history})
+            return self._send_json(legacy_scope_disabled_payload("odds-history"))
         if route == "/api/report":
-            return self._send_text(REPORT_PATH.read_text(encoding="utf-8"), "text/markdown; charset=utf-8")
+            return self._send_text(build_report_text(), "text/markdown; charset=utf-8")
         if route == "/api/all":
-            return self._send_json(STATE.payload())
+            return self._send_json(load_scoped_compat_dashboard())
+        if route in CONTRACT_API_ROUTES:
+            if CONTRACT_API_ROUTES[route] == "runs_latest":
+                return self._send_json(runs_latest_payload())
+            if CONTRACT_API_ROUTES[route] == "runs_history":
+                return self._send_json(runs_history_payload())
+            return self._send_json(section_payload(CONTRACT_API_ROUTES[route]))
         if route == "/api/multi-agent":
-            return self._send_json(enrich_multi_agent_payload(multi_agent_payload(STATE.multi_agent_result)))
+            latest = load_latest_dashboard()
+            state = get_state()
+            return self._send_json(latest["multi_agent"] if latest else state.payload().get("multi_agent", {}))
         if route == "/api/intelligence":
-            return self._send_json(getattr(STATE, "intelligence_payload", load_latest_intelligence()))
+            latest = load_latest_intelligence()
+            return self._send_json(latest or getattr(get_state(), "intelligence_payload", {}))
         if route == "/api/intelligence-refresh":
-            STATE.intelligence_payload = run_intelligence_cycle(
+            state = get_state()
+            state.intelligence_payload = run_intelligence_cycle(
                 cycle_type="manual",
                 source_mode="fixture",
                 target_count=300,
                 persist=True,
                 allow_codex=True,
-                dashboard_payload=STATE.payload(),
+                dashboard_payload=state.payload(),
             )
-            return self._send_json(STATE.intelligence_payload)
+            return self._send_json(state.intelligence_payload)
         if route == "/api/cron-refresh":
             params = parse_qs(parsed.query)
             source_mode = params.get("source", ["live"])[0]
@@ -108,6 +163,38 @@ class Handler(BaseHTTPRequestHandler):
                 source_mode = "live"
             target_count = int(params.get("target_count", ["300"])[0])
             return self._send_json(run_managed_cycle(source_mode=source_mode, target_count=target_count))
+        if route == "/api/cron-collector":
+            params = parse_qs(parsed.query)
+            source_mode = params.get("source", ["fixture"])[0]
+            if source_mode not in {"fixture", "live"}:
+                source_mode = "fixture"
+            return self._send_json(
+                run_collector(
+                    CollectorRunConfig(
+                        source_mode=source_mode,
+                        target_count=int(params.get("target_count", ["80"])[0]),
+                        dry_run=params.get("dry_run", ["true"])[0].lower() == "true",
+                        as_of=params.get("as_of", [None])[0],
+                        force=params.get("force", ["false"])[0].lower() == "true",
+                    )
+                )
+            )
+        if route == "/api/cron-daily":
+            params = parse_qs(parsed.query)
+            source_mode = params.get("source", ["fixture"])[0]
+            if source_mode not in {"fixture", "live"}:
+                source_mode = "fixture"
+            return self._send_json(
+                run_daily_analysis(
+                    DailyRunConfig(
+                        source_mode=source_mode,
+                        target_count=int(params.get("target_count", ["30"])[0]),
+                        dry_run=params.get("dry_run", ["true"])[0].lower() == "true",
+                        as_of=params.get("as_of", [None])[0],
+                        force=params.get("force", ["false"])[0].lower() == "true",
+                    )
+                )
+            )
         if route == "/api/codex-queue":
             params = parse_qs(parsed.query)
             if params.get("action", ["summary"])[0] == "drain":
@@ -129,8 +216,9 @@ class Handler(BaseHTTPRequestHandler):
             params = parse_qs(parsed.query)
             source_mode = params.get("source", ["fixture"])[0]
             target_count = int(params.get("target_count", ["300"])[0])
-            STATE.refresh(source_mode=source_mode, target_count=target_count)
-            return self._send_json(STATE.payload())
+            state = get_state()
+            state.refresh(source_mode=source_mode, target_count=target_count)
+            return self._send_json(state.payload())
         if route == "/api/codex-queue":
             params = parse_qs(parsed.query)
             limit = int(params.get("limit", ["12"])[0])
@@ -145,6 +233,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404, "Not found")
             return
         self._send_bytes(path.read_bytes(), content_type)
+
+    def _send_download(self, route: str) -> None:
+        name = Path(route.removeprefix("/downloads/")).name
+        path = WEB_DIR / "downloads" / name
+        if path.suffix == ".pdf":
+            return self._send_file(path, "application/pdf")
+        if path.suffix == ".xlsx":
+            return self._send_file(
+                path,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        self.send_error(404, "Not found")
 
     def _send_json(self, payload: object) -> None:
         self._send_bytes(json.dumps(payload, separators=(",", ":")).encode("utf-8"), "application/json; charset=utf-8")

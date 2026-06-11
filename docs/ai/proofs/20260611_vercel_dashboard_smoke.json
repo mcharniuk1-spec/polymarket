@@ -1,0 +1,35 @@
+{
+  "proof_id": "vercel_dashboard_smoke_20260611",
+  "as_of": "2026-06-11T05:30:00Z",
+  "deployment": {
+    "id": "dpl_AYkk3aKjqzUUbfLda1J3A7qNoZnL",
+    "url": "https://polymarket-research-dashboard-enn28tvak.vercel.app",
+    "alias": "https://polymarket-research-dashboard.vercel.app",
+    "ready_state": "READY",
+    "target": "production"
+  },
+  "checks": {
+    "root_http_status": 200,
+    "health_http_status": 200,
+    "dashboard_contract_http_status": 200,
+    "runs_latest_http_status": 200,
+    "unauthenticated_cron_daily_http_status": 401,
+    "health_ok": true,
+    "health_research_only": true,
+    "health_cron_secret_configured": true,
+    "health_durable_storage_configured": true,
+    "runs_latest_ok": true,
+    "runs_latest_paper_trading_only": true,
+    "runs_latest_source_mode": "live",
+    "runs_latest_status": "success",
+    "dashboard_contract_ok": true,
+    "dashboard_contract_paper_trading_only": true,
+    "dashboard_contract_filtered_out_of_scope_markets": true,
+    "dashboard_contract_contains_known_sports_leak": false
+  },
+  "notes": [
+    "No secrets or token values are stored in this proof artifact.",
+    "CRON_SECRET was generated and added through Vercel CLI without printing the value.",
+    "Vercel Hobby supports daily cron but rejected the 15-minute cron expression; GitHub Actions remains the 15-minute collector scheduler."
+  ]
+}

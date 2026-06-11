@@ -5,6 +5,7 @@ from typing import Any
 
 from .agents import ACTIVE_CATEGORIES, MarketCandidate, MarketDataAgent
 from .odds_math import clamp
+from .research_scope import source_categories_for
 from .source_registry import SourceRecord, SourceRegistry
 
 
@@ -65,8 +66,8 @@ class BetResearchPlanner:
         self.registry = registry or SourceRegistry()
         self.registry.require_valid()
 
-    def brief_for_candidate_id(self, candidate_id: str, *, target_count: int = 600) -> ResearchBrief:
-        candidates = MarketDataAgent().load_candidates(source_mode="fixture", target_count=max(target_count, 600))
+    def brief_for_candidate_id(self, candidate_id: str, *, target_count: int = 300) -> ResearchBrief:
+        candidates = MarketDataAgent().load_candidates(source_mode="fixture", target_count=max(target_count, 300))
         for candidate in candidates:
             if candidate.candidate_id == candidate_id:
                 return self.brief_for_candidate(candidate)
@@ -153,7 +154,8 @@ class BetResearchPlanner:
         by_id = {source.id: source for source in searched}
         for source in required:
             by_id.setdefault(source.id, source)
-        return sorted(by_id.values(), key=lambda source: (source.category not in {category, "polymarket", "global"}, source.category, source.id))
+        category_sources = source_categories_for(category, include_global=True, include_polymarket=True)
+        return sorted(by_id.values(), key=lambda source: (source.category not in category_sources, source.category, source.id))
 
     def _planned_queries(
         self,
@@ -198,7 +200,8 @@ class BetResearchPlanner:
         return evidence
 
     def _source_coverage(self, category: str, planned_sources: list[SourceRecord]) -> dict[str, Any]:
-        category_sources = [source for source in planned_sources if source.category == category]
+        category_aliases = source_categories_for(category)
+        category_sources = [source for source in planned_sources if source.category in category_aliases]
         global_sources = [source for source in planned_sources if source.category == "global"]
         polymarket_sources = [source for source in planned_sources if source.category == "polymarket"]
         allowed_sources = [source for source in planned_sources if source.allowed_by_default]
@@ -242,7 +245,8 @@ class BetResearchPlanner:
         resolution_risk_flags: list[str],
     ) -> list[str]:
         needs = []
-        primary_sources = [source for source in planned_sources if source.category == category and source.reliability_tier == "primary"]
+        category_aliases = source_categories_for(category)
+        primary_sources = [source for source in planned_sources if source.category in category_aliases and source.reliability_tier == "primary"]
         if not primary_sources:
             needs.append("find at least one primary category source")
         if contradiction_flags:

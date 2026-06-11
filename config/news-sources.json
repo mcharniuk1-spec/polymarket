@@ -47,7 +47,7 @@
   {
     "name": "ReliefWeb",
     "url": "https://apidoc.reliefweb.int/",
-    "category": "geopolitics",
+    "category": "politics",
     "reliability_tier": 1,
     "update_frequency": "15m",
     "notes": "Humanitarian primary/official context for conflict and crisis markets.",
@@ -56,7 +56,7 @@
   {
     "name": "ACLED",
     "url": "https://acleddata.com/acled-api-documentation",
-    "category": "geopolitics",
+    "category": "politics",
     "reliability_tier": 2,
     "update_frequency": "daily",
     "notes": "Recognized event-data provider; live API access requires access review.",
@@ -69,15 +69,24 @@
     "reliability_tier": 1,
     "update_frequency": "15m",
     "notes": "Public exchange market data only. No account or trading endpoints.",
-    "enabled": true
+    "enabled": false
   },
   {
     "name": "FRED",
     "url": "https://fred.stlouisfed.org/docs/api/fred/",
-    "category": "macro",
+    "category": "macroeconomics",
     "reliability_tier": 1,
     "update_frequency": "15m",
     "notes": "Official Federal Reserve economic time series source.",
+    "enabled": true
+  },
+  {
+    "name": "SEC EDGAR Company Facts",
+    "url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "category": "stocks_trade",
+    "reliability_tier": 1,
+    "update_frequency": "15m",
+    "notes": "Official public company filings and facts API for stock and company-event context.",
     "enabled": true
   },
   {
@@ -87,7 +96,7 @@
     "reliability_tier": 1,
     "update_frequency": "15m",
     "notes": "Official US National Weather Service public API.",
-    "enabled": true
+    "enabled": false
   },
   {
     "name": "TMDb",

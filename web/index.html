@@ -39,12 +39,13 @@
 
       <section class="tabs" aria-label="Dashboard pages">
         <button class="tab active" data-page="overview" type="button">Overview</button>
+        <button class="tab" data-page="contract" type="button">System</button>
+        <button class="tab" data-page="daily-bets" type="button">Daily Bets</button>
         <button class="tab" data-page="bets" type="button">Current Bets</button>
         <button class="tab" data-page="news" type="button">News</button>
         <button class="tab" data-page="events" type="button">Events</button>
         <button class="tab" data-page="intelligence" type="button">Intelligence</button>
         <button class="tab" data-page="model-progress" type="button">Model Progress</button>
-        <button class="tab" data-page="sports" type="button">Sports Odds</button>
         <button class="tab" data-page="categories" type="button">Categories</button>
         <button class="tab" data-page="details" type="button">Bet Detail</button>
         <button class="tab" data-page="learning" type="button">Learning</button>
@@ -113,10 +114,108 @@
         </section>
       </section>
 
+      <section id="contract" class="page">
+        <div id="contractStatusGrid" class="metric-grid sports-metrics"></div>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Context And Freshness</h2>
+              <span id="contractFreshnessStatus">not loaded</span>
+            </div>
+            <div id="contractContextGrid" class="contract-grid"></div>
+          </div>
+          <aside class="panel">
+            <div class="panel-header">
+              <h2>Reliability Warnings</h2>
+              <span id="contractWarningCount">0</span>
+            </div>
+            <div id="contractWarnings" class="warning-list"></div>
+          </aside>
+        </section>
+
+        <section class="layout">
+          <div class="panel wide">
+            <div class="panel-header">
+              <h2>Candidate Decisions</h2>
+              <span>reject / watchlist / paper-bet</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Market</th>
+                    <th>Decision</th>
+                    <th>Spread</th>
+                    <th>Liquidity</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="contractCandidateRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="panel">
+            <div class="panel-header">
+              <h2>Performance</h2>
+              <span id="contractPerformanceStatus">pending</span>
+            </div>
+            <div id="contractPerformanceGrid" class="contract-grid compact"></div>
+          </aside>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Model Disagreement</h2>
+            <span>by candidate</span>
+          </div>
+          <div id="contractModelGrid" class="contract-grid"></div>
+        </section>
+      </section>
+
+      <section id="daily-bets" class="page">
+        <div id="dailyBetSummary" class="metric-grid sports-metrics"></div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Daily Paper Bets</h2>
+              <span id="dailyBetRun">current research cycle</span>
+            </div>
+            <div class="artifact-links" aria-label="Research exports">
+              <a href="/downloads/polymarket_workflow_report.pdf" target="_blank" rel="noreferrer">PDF report</a>
+              <a href="/downloads/polymarket_model_outputs.xlsx" target="_blank" rel="noreferrer">XLSX model outputs</a>
+            </div>
+          </div>
+          <div id="dailyBetEmpty" class="empty-card">No paper bets qualified in the current cycle.</div>
+          <div class="table-wrap daily-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Category</th>
+                  <th>Market</th>
+                  <th>Outcome</th>
+                  <th>Forecast</th>
+                  <th>Price</th>
+                  <th>EV</th>
+                  <th>Stake</th>
+                  <th>Risk</th>
+                  <th>State</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody id="dailyBetRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section id="bets" class="page">
         <section class="panel">
           <div class="panel-header">
-            <h2>Current Bet Book</h2>
+            <h2>Approved Bet Book</h2>
             <span id="placedSummary">0 coins</span>
           </div>
           <div id="betStateSummary" class="state-summary"></div>
@@ -269,69 +368,15 @@
         </section>
       </section>
 
-      <section id="sports" class="page">
-        <div class="metric-grid sports-metrics">
-          <article class="metric"><span>Forecasts</span><strong id="sportsForecastCount">0</strong></article>
-          <article class="metric"><span>Paper Trades</span><strong id="sportsPaperTradeCount">0</strong></article>
-          <article class="metric"><span>Win Rate</span><strong id="sportsWinRate">0%</strong></article>
-          <article class="metric"><span>Sim ROI</span><strong id="sportsRoi">0%</strong></article>
-          <article class="metric"><span>Drawdown</span><strong id="sportsDrawdown">0%</strong></article>
-          <article class="metric"><span>Brier</span><strong id="sportsBrier">0.000</strong></article>
-        </div>
-
-        <section class="layout">
-          <div class="panel wide">
-            <div class="panel-header">
-              <h2>Sports Forecasts, Confidence, and EV</h2>
-              <span>historical fixture backtest</span>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Selection</th>
-                    <th>Odds</th>
-                    <th>Fair Prob</th>
-                    <th>Confidence</th>
-                    <th>EV</th>
-                    <th>Decision</th>
-                  </tr>
-                </thead>
-                <tbody id="sportsForecastRows"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <aside class="panel">
-            <div class="panel-header">
-              <h2>Paper Trading Decisions</h2>
-              <span id="sportsTradeSummary">0 units</span>
-            </div>
-            <div id="sportsTradeList" class="sports-trade-list"></div>
-          </aside>
-        </section>
-
-        <section class="layout">
-          <div class="panel wide">
-            <div class="panel-header">
-              <h2>Odds History</h2>
-              <span>open, estimate, expected resolution</span>
-            </div>
-            <div id="sportsOddsHistory" class="sports-history"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-header">
-              <h2>Calibration</h2>
-              <span>settled paper records</span>
-            </div>
-            <div id="sportsCalibration" class="calibration"></div>
-          </div>
-        </section>
-      </section>
-
       <section id="categories" class="page">
         <div id="categoryCards" class="category-grid"></div>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>External Data Readiness</h2>
+            <span>fetched vs planned vs blocked sources</span>
+          </div>
+          <div id="externalReadinessCards" class="readiness-grid"></div>
+        </section>
         <section class="panel">
           <div class="panel-header">
             <h2>All Current Bets And Watchlist</h2>

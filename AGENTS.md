@@ -2,7 +2,11 @@
 
 Use the workspace contract from `/Users/getapple/Documents/Polymarket/docs/ai/NEXUS_OBSIDIAN_GRAPHIFY.md`.
 
-Project identity: Polymarket research-only multi-category odds, market-news, and paper-bankroll analytics MVP.
+Project identity: Polymarket research-only prediction-market analytics and paper-bankroll MVP.
+
+Active analytical scope: macroeconomics, politics, and stocks/trade-related markets only.
+
+Operating agents: Context Agent, Data Agent, and Decision Agent. Internal odds/context/category/model helpers must roll up to those three agents in user-facing outputs.
 
 Primary durable memory layer: Polymarket Obsidian project vault plus WikiLLM project `polymarket`. Use the global Obsidian control vault for cross-project routing.
 

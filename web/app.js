@@ -1,6 +1,6 @@
 let dashboard = null;
-let sportsDashboard = null;
 let intelligenceDashboard = null;
+let contractDashboard = null;
 let modelProgressSelection = "all";
 let selectedCategory = "all";
 let refreshInFlight = false;
@@ -46,19 +46,19 @@ async function loadDashboard(refresh = false) {
       ? await fetchJson(`/api/refresh?source=${encodeURIComponent(source)}&target_count=300`, { method: "POST" })
       : await fetchJson("/api/all");
     dashboard = payload.multi_agent;
-    sportsDashboard = {
-      metrics: payload.metrics,
-      forecasts: payload.forecasts,
-      trades: payload.trades,
-      odds_history: payload.odds_history,
-    };
     renderPortfolioStrip(dashboard);
     renderOverview(dashboard);
-    renderSports(sportsDashboard);
+    renderDailyBets(dashboard);
     renderCategories(dashboard);
     renderPlacedBets(dashboard);
     renderNews(dashboard);
     renderEvents(dashboard);
+    try {
+      contractDashboard = await fetchJson("/api/dashboard-contract");
+      renderContractDashboard(contractDashboard);
+    } catch (error) {
+      renderContractDashboardError(error);
+    }
     try {
       intelligenceDashboard = await fetchJson("/api/intelligence");
       const [runHistory, modelState, correlations] = await Promise.all([
@@ -82,6 +82,90 @@ async function loadDashboard(refresh = false) {
   }
 }
 
+function renderContractDashboard(payload) {
+  const status = payload.status || {};
+  const freshness = payload.freshness || {};
+  const decisions = payload.decisions || {};
+  const performance = payload.performance || {};
+  const portfolio = payload.portfolio || {};
+  const warnings = payload.warnings || [];
+  const errors = payload.errors || [];
+  document.getElementById("contractStatusGrid").innerHTML = `
+    <article class="metric"><span>Run</span><strong>${escapeHtml(status.status || "unknown")}</strong></article>
+    <article class="metric"><span>Source</span><strong>${escapeHtml(status.sourceMode || "-")}</strong></article>
+    <article class="metric"><span>Fresh markets</span><strong>${freshness.marketSnapshotCount || 0}</strong></article>
+    <article class="metric"><span>External obs</span><strong>${freshness.externalObservationCount || 0}</strong></article>
+    <article class="metric"><span>Paper bets</span><strong>${(decisions.paperBets || []).length}</strong></article>
+    <article class="metric"><span>Rejected</span><strong>${(decisions.rejected || []).length}</strong></article>
+    <article class="metric"><span>Drawdown</span><strong>${formatPercent(performance.drawdown?.currentDrawdownPct || portfolio.current_drawdown_pct || 0)}</strong></article>
+    <article class="metric"><span>Warnings</span><strong>${warnings.length + errors.length}</strong></article>
+  `;
+  document.getElementById("contractFreshnessStatus").textContent =
+    `${freshness.marketSnapshotCount || 0} markets / ${(payload.sources?.evidence || []).length} evidence rows`;
+  const broad = payload.context?.broadReports || [];
+  const specific = payload.context?.betSpecificReports || [];
+  document.getElementById("contractContextGrid").innerHTML = [
+    ...broad.map((report) => contractContextCard(report, "Broad")),
+    ...specific.map((report) => contractContextCard(report, "Bet-specific")),
+  ].join("");
+  const candidates = payload.candidates || [];
+  document.getElementById("contractCandidateRows").innerHTML = candidates
+    .map((row) => `
+      <tr>
+        <td><span class="category-pill">${escapeHtml(row.category)}</span></td>
+        <td>${escapeHtml(row.question)}</td>
+        <td><span class="state-chip state-${escapeHtml(row.decision || "watchlist")}">${escapeHtml(row.decision || "watchlist")}</span></td>
+        <td>${formatPercent(row.spread)}</td>
+        <td>${formatCoins(row.liquidity)}</td>
+        <td>${escapeHtml((row.reasons || [])[0] || "No reason recorded.")}</td>
+      </tr>
+    `)
+    .join("");
+  document.getElementById("contractPerformanceStatus").textContent = performance.status || "pending";
+  const summary = performance.summary || {};
+  document.getElementById("contractPerformanceGrid").innerHTML = `
+    <article><span>History</span><strong>${(performance.paperTradingHistory || []).length}</strong></article>
+    <article><span>Resolved</span><strong>${(performance.resolvedOutcomes || []).length}</strong></article>
+    <article><span>Wins</span><strong>${summary.wins || 0}</strong></article>
+    <article><span>Losses</span><strong>${summary.losses || 0}</strong></article>
+    <article><span>PnL</span><strong>${formatCoins(summary.totalPnlUnits || 0)}</strong></article>
+    <article><span>Brier</span><strong>${performance.calibration?.brierScore ?? "n/a"}</strong></article>
+    <article><span>Lessons</span><strong>${(performance.knowledgeLessons || []).length}</strong></article>
+  `;
+  const disagreement = payload.models?.disagreement?.byCandidate || {};
+  document.getElementById("contractModelGrid").innerHTML = Object.entries(disagreement)
+    .map(([candidateId, row]) => `
+      <article>
+        <span>${escapeHtml(candidateId)}</span>
+        <strong>${formatPercent(row.range || 0)} disagreement</strong>
+        <small>${row.modelCount || 0} models / ${formatPercent(row.minProbability || 0)}-${formatPercent(row.maxProbability || 0)}</small>
+      </article>
+    `)
+    .join("") || `<article><span>Models</span><strong>No disagreement rows</strong></article>`;
+  document.getElementById("contractWarningCount").textContent = `${warnings.length} warnings / ${errors.length} errors`;
+  document.getElementById("contractWarnings").innerHTML = [
+    ...warnings.map((warning) => `<p>${escapeHtml(warning)}</p>`),
+    ...errors.map((error) => `<p class="error">${escapeHtml(JSON.stringify(error))}</p>`),
+  ].join("") || `<p>No reliability warnings reported.</p>`;
+}
+
+function contractContextCard(report, label) {
+  return `
+    <article>
+      <span>${escapeHtml(label)} / ${escapeHtml(report.category)}</span>
+      <strong>${formatPercent(report.confidence)}</strong>
+      <small>${escapeHtml(report.reliability)} · ${escapeHtml(report.uncertainty)}</small>
+    </article>
+  `;
+}
+
+function renderContractDashboardError(error) {
+  document.getElementById("contractStatusGrid").innerHTML = `
+    <article class="metric"><span>Contract</span><strong>unavailable</strong></article>
+  `;
+  document.getElementById("contractWarnings").innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+}
+
 function renderPortfolioStrip(data) {
   const metrics = data.metrics;
   const rules = data.portfolio_rules || {};
@@ -94,105 +178,51 @@ function renderPortfolioStrip(data) {
     rules.collection_rule || "Track public market data, model estimates, and research-only paper status. No wallet or order execution.";
 }
 
-function renderSports(data) {
-  const metrics = data.metrics;
-  document.getElementById("sportsForecastCount").textContent = metrics.forecast_count;
-  document.getElementById("sportsPaperTradeCount").textContent = metrics.paper_trade_count;
-  document.getElementById("sportsWinRate").textContent = formatPercent(metrics.win_rate);
-  document.getElementById("sportsRoi").textContent = formatSignedPercent(metrics.simulated_roi);
-  document.getElementById("sportsDrawdown").textContent = formatPercent(metrics.max_drawdown);
-  document.getElementById("sportsBrier").textContent = Number(metrics.brier_score || 0).toFixed(4);
-  renderSportsForecasts(data.forecasts);
-  renderSportsTrades(data.trades, metrics);
-  renderSportsOddsHistory(data.odds_history);
-  renderSportsCalibration(metrics.calibration || []);
+function dailyPaperBets(data) {
+  return (data.recommendations || [])
+    .filter((item) => item.decision === "PAPER_BET")
+    .sort((a, b) => Number(b.rank_score || 0) - Number(a.rank_score || 0));
 }
 
-function renderSportsForecasts(forecasts) {
-  document.getElementById("sportsForecastRows").innerHTML = forecasts
-    .map((item) => {
-      const evClass = item.expected_value >= 0 ? "ev-pos" : "ev-neg";
-      const badgeClass = item.decision === "PAPER_TRADE" ? "play" : "no";
+function renderDailyBets(data) {
+  const rows = dailyPaperBets(data);
+  const totalStake = rows.reduce((sum, item) => sum + Number(item.stake_units || 0), 0);
+  const avgForecast = rows.reduce((sum, item) => sum + Number(item.blended_probability || 0), 0) / Math.max(rows.length, 1);
+  const avgPrice = rows.reduce((sum, item) => sum + Number(item.candidate?.price || 0), 0) / Math.max(rows.length, 1);
+  const avgEv = rows.reduce((sum, item) => sum + Number(item.expected_value || 0), 0) / Math.max(rows.length, 1);
+  const runDate = shortDate(data.created_at || new Date().toISOString());
+  document.getElementById("dailyBetRun").textContent = `${runDate} / ${rows.length} paper bets / research-only`;
+  document.getElementById("dailyBetSummary").innerHTML = `
+    <article class="metric"><span>Daily bets</span><strong>${rows.length}</strong></article>
+    <article class="metric"><span>Total stake</span><strong>${formatCoins(totalStake)}</strong></article>
+    <article class="metric"><span>Avg forecast</span><strong>${formatPercent(avgForecast)}</strong></article>
+    <article class="metric"><span>Avg price</span><strong>${formatPercent(avgPrice)}</strong></article>
+    <article class="metric"><span>Avg EV</span><strong>${formatSignedPercent(avgEv)}</strong></article>
+    <article class="metric"><span>Mode</span><strong>paper</strong></article>
+  `;
+  document.getElementById("dailyBetEmpty").hidden = rows.length > 0;
+  document.getElementById("dailyBetRows").innerHTML = rows
+    .map((item, index) => {
+      const candidate = item.candidate || {};
+      const detail = detailRecords()[candidate.candidate_id] || {};
       return `
-        <tr>
-          <td>${escapeHtml(item.matchup)}</td>
-          <td>${escapeHtml(item.selection)}</td>
-          <td>${item.american_odds}</td>
-          <td>${formatPercent(item.fair_probability)}</td>
-          <td>${formatPercent(item.confidence)}</td>
-          <td class="${evClass}">${formatSignedPercent(item.expected_value)}</td>
-          <td><span class="badge ${badgeClass}">${item.decision.replace("_", " ")}</span></td>
+        <tr class="clickable state-row state-${detail.state || "betted"}" data-id="${candidate.candidate_id}">
+          <td>${index + 1}</td>
+          <td><span class="category-pill">${escapeHtml(candidate.category)}</span></td>
+          <td>${escapeHtml(candidate.market_title)}</td>
+          <td>${escapeHtml(candidate.outcome)}</td>
+          <td>${formatPercent(item.blended_probability)}</td>
+          <td>${formatPercent(candidate.price)}</td>
+          <td class="${item.expected_value >= 0 ? "ev-pos" : "ev-neg"}">${formatSignedPercent(item.expected_value)}</td>
+          <td>${formatCoins(item.stake_units)}</td>
+          <td><span class="risk ${String(item.risk_tier || "").toLowerCase()}">${escapeHtml(item.risk_tier)}</span></td>
+          <td><span class="state-chip state-${detail.state || "betted"}">${escapeHtml(detail.state_label || "Paper bet")}</span></td>
+          <td>${escapeHtml(item.reason)}</td>
         </tr>
       `;
     })
     .join("");
-}
-
-function renderSportsTrades(trades, metrics) {
-  document.getElementById("sportsTradeSummary").textContent = `${formatCoins(metrics.total_pnl_units)} units`;
-  document.getElementById("sportsTradeList").innerHTML = trades
-    .map((trade) => `
-      <article class="sports-trade">
-        <strong>${escapeHtml(trade.selection)}</strong>
-        <dl>
-          <dt>Matchup</dt><dd>${escapeHtml(trade.matchup)}</dd>
-          <dt>Outcome</dt><dd>${trade.outcome}</dd>
-          <dt>Stake</dt><dd>${formatCoins(trade.stake_units)}u</dd>
-          <dt>PnL</dt><dd>${formatCoins(trade.pnl_units)}u</dd>
-          <dt>EV</dt><dd>${formatSignedPercent(trade.expected_value)}</dd>
-          <dt>Bankroll</dt><dd>${formatCoins(trade.bankroll_after)}u</dd>
-        </dl>
-      </article>
-    `)
-    .join("");
-}
-
-function renderSportsOddsHistory(history) {
-  const groups = history.reduce((acc, row) => {
-    const key = `${row.event_id}:${row.selection}`;
-    acc[key] ||= [];
-    acc[key].push(row);
-    return acc;
-  }, {});
-  document.getElementById("sportsOddsHistory").innerHTML = Object.entries(groups)
-    .slice(0, 12)
-    .map(([key, rows]) => {
-      const selection = key.split(":").slice(1).join(":");
-      const odds = rows.map((row) => Number(row.american_odds));
-      const min = Math.min(...odds);
-      const max = Math.max(...odds);
-      const bars = odds
-        .map((odd) => {
-          const normalized = max === min ? 0.5 : (odd - min) / (max - min);
-          const height = 22 + normalized * 42;
-          return `<span title="${odd}" style="height:${height}px"></span>`;
-        })
-        .join("");
-      return `
-        <article class="sports-history-row">
-          <strong>${escapeHtml(selection)}</strong>
-          <small>${odds.join(" / ")}</small>
-          <div class="mini-chart">${bars}</div>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-function renderSportsCalibration(calibration) {
-  document.getElementById("sportsCalibration").innerHTML = calibration
-    .map((bucket) => {
-      const winRate = bucket.actual_win_rate === null ? 0 : Number(bucket.actual_win_rate);
-      const label = bucket.actual_win_rate === null ? "n/a" : formatPercent(bucket.actual_win_rate);
-      return `
-        <div class="cal-row">
-          <span>${bucket.label}</span>
-          <div class="bar"><span style="width:${Math.max(winRate * 100, 2)}%"></span></div>
-          <strong>${label}</strong>
-        </div>
-      `;
-    })
-    .join("");
+  bindDetailRows();
 }
 
 function renderOverview(data) {
@@ -261,21 +291,30 @@ function renderOverviewNews(data) {
 }
 
 function renderCategories(data) {
+  const readinessByCategory = Object.fromEntries(
+    (data.external_data_readiness?.categoryReadiness || []).map((row) => [row.category, row])
+  );
   document.getElementById("categoryCards").innerHTML = data.category_stats
-    .map((row) => `
-      <article class="category-card">
-        <h3>${row.category}</h3>
-        <dl>
-          <dt>Candidates</dt><dd>${row.candidate_count}</dd>
-          <dt>Bets</dt><dd>${row.paper_bet_count}</dd>
-          <dt>Win rate</dt><dd>${formatPercent(row.win_rate)}</dd>
-          <dt>Avg odds</dt><dd>${Number(row.average_decimal_odds).toFixed(2)}</dd>
-          <dt>Avg EV</dt><dd>${formatSignedPercent(row.average_ev)}</dd>
-          <dt>PnL</dt><dd>${formatCoins(row.pnl_units)}</dd>
-        </dl>
-      </article>
-    `)
+    .map((row) => {
+      const statusCounts = readinessByCategory[row.category]?.sourceStatusCounts || {};
+      const planned = Number(statusCounts.registered_needs_fetcher_and_asof_storage || 0) + Number(statusCounts.client_available_not_wired || 0);
+      return `
+        <article class="category-card">
+          <h3>${row.category}</h3>
+          <dl>
+            <dt>Candidates</dt><dd>${row.candidate_count}</dd>
+            <dt>Bets</dt><dd>${row.paper_bet_count}</dd>
+            <dt>Win rate</dt><dd>${formatPercent(row.win_rate)}</dd>
+            <dt>Avg odds</dt><dd>${Number(row.average_decimal_odds).toFixed(2)}</dd>
+            <dt>Avg EV</dt><dd>${formatSignedPercent(row.average_ev)}</dd>
+            <dt>PnL</dt><dd>${formatCoins(row.pnl_units)}</dd>
+            <dt>Sources</dt><dd>${statusCounts.implemented || 0} live / ${planned} planned / ${statusCounts.blocked_until_access_or_license_review || 0} blocked</dd>
+          </dl>
+        </article>
+      `;
+    })
     .join("");
+  renderExternalReadiness(data.external_data_readiness);
 
   const categories = ["all", ...data.category_stats.map((row) => row.category)];
   document.getElementById("categoryFilters").innerHTML = categories
@@ -309,17 +348,61 @@ function renderCategories(data) {
   bindDetailRows();
 }
 
+function renderExternalReadiness(readiness) {
+  const target = document.getElementById("externalReadinessCards");
+  if (!target) return;
+  const entities = readiness?.detectedEntities || {};
+  const entityGroups = [
+    ["Countries", entities.countries || []],
+    ["Politics", entities.politicalTrends || []],
+    ["Macro", entities.macroTrends || []],
+    ["Companies", entities.companiesAndCommodities || []],
+    ["Trade", entities.tradeSignals || []],
+  ];
+  target.innerHTML = `
+    ${(readiness?.categoryReadiness || []).map((row) => {
+      const counts = row.sourceStatusCounts || {};
+      const planned = Number(counts.registered_needs_fetcher_and_asof_storage || 0) + Number(counts.client_available_not_wired || 0);
+      return `
+        <article class="readiness-card">
+          <strong>${escapeHtml(row.category)}</strong>
+          <dl>
+            <dt>Markets</dt><dd>${row.candidateCount}</dd>
+            <dt>Implemented</dt><dd>${counts.implemented || 0}</dd>
+            <dt>Planned</dt><dd>${planned}</dd>
+            <dt>Blocked</dt><dd>${counts.blocked_until_access_or_license_review || 0}</dd>
+          </dl>
+        </article>
+      `;
+    }).join("")}
+    <article class="readiness-card readiness-wide">
+      <strong>Detected entity coverage</strong>
+      <div class="entity-chip-grid">
+        ${entityGroups.map(([label, rows]) => `
+          <div>
+            <span>${escapeHtml(label)}</span>
+            ${(rows || []).slice(0, 8).map((row) => `<em>${escapeHtml(row.name)} ${row.count}</em>`).join("") || "<em>none</em>"}
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
 function renderPlacedBets(data) {
-  const stateCounts = (data.bet_detail_records || []).reduce((acc, record) => {
-    acc[record.state] = (acc[record.state] || 0) + 1;
+  const approvedBets = dailyPaperBets(data);
+  const stateCounts = approvedBets.reduce((acc, item) => {
+    const record = detailRecords()[item.candidate.candidate_id] || {};
+    const state = record.state || "approved";
+    acc[state] = (acc[state] || 0) + 1;
     return acc;
   }, {});
   document.getElementById("placedSummary").textContent =
-    `${formatCoins(data.metrics.total_staked_units)} / ${formatCoins(data.metrics.deployment_budget_units)} coins allocated`;
+    `${approvedBets.length} approved bets / ${formatCoins(data.metrics.total_staked_units)} allocated`;
   document.getElementById("betStateSummary").innerHTML = Object.entries(stateCounts)
     .map(([state, count]) => `<span class="state-chip state-${state}">${state.replaceAll("_", " ")} ${count}</span>`)
     .join("");
-  document.getElementById("placedBets").innerHTML = data.recommendations
+  document.getElementById("placedBets").innerHTML = approvedBets
     .slice(0, 180)
     .map((item) => `
       <article class="bet-card clickable state-card state-${detailRecords()[item.candidate.candidate_id]?.state || "planning"}" data-id="${item.candidate.candidate_id}">
@@ -495,11 +578,16 @@ function renderIntelligenceSignals(payload) {
         ${renderLifecycleTimes(row.lifecycleTimes)}
         ${renderMultiModelForecast(row.multiModelForecast)}
         ${renderNewsAndCorrelation(row.newsMonitor, row.correlatedOddsInfluence)}
-        <div class="signal-notes">
-          <strong>${escapeHtml(row.reliability.label)}</strong>
-          <p>${escapeHtml(row.reliability.explanation)}</p>
-          <ul>${row.modelInterpretation.riskFactors.slice(0, 3).map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}</ul>
-        </div>
+        <details class="signal-notes analysis-disclosure" open>
+          <summary>
+            <span>Interpretation</span>
+            <small>${escapeHtml(row.reliability.label)}</small>
+          </summary>
+          <div class="analysis-body">
+            <p>${escapeHtml(row.reliability.explanation)}</p>
+            <ul>${row.modelInterpretation.riskFactors.slice(0, 3).map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}</ul>
+          </div>
+        </details>
         <div class="source-strip">
           ${row.newsContext.strongestSources.slice(0, 3).map(renderSignalSource).join("")}
         </div>
@@ -525,27 +613,29 @@ function renderMultiModelForecast(forecast) {
   if (!forecast) return "";
   const outputs = forecast.outputs || [];
   return `
-    <section class="multi-model-card">
-      <header>
-        <strong>Multi-output forecast</strong>
-        <span>${escapeHtml(forecast.expectedDirection || "flat")} · ensemble ${formatPercent(forecast.ensembleProbability)}</span>
-      </header>
-      <p>${escapeHtml(forecast.expectation?.why || "")}</p>
-      <div class="model-output-grid">
-        ${outputs.map((model) => `
-          <article>
-            <strong>${escapeHtml(model.label)}</strong>
-            <span>${formatPercent(model.probability)}</span>
-            <small>${escapeHtml(model.explanation)}</small>
-          </article>
-        `).join("")}
+    <details class="multi-model-card analysis-disclosure" open>
+      <summary>
+        <span>Multi-output forecast</span>
+        <small>${escapeHtml(forecast.expectedDirection || "flat")} / ensemble ${formatPercent(forecast.ensembleProbability)}</small>
+      </summary>
+      <div class="analysis-body">
+        <p>${escapeHtml(forecast.expectation?.why || "")}</p>
+        <div class="model-output-grid">
+          ${outputs.map((model) => `
+            <article>
+              <strong>${escapeHtml(model.label)}</strong>
+              <span>${formatPercent(model.probability)}</span>
+              <small>${escapeHtml(model.explanation)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <dl class="compact-dl">
+          <dt>Model disagreement</dt><dd>${formatPercent(forecast.modelDisagreement)}</dd>
+          <dt>Direct odds dominate</dt><dd>${forecast.rules?.directMarketEvidenceDominates ? "yes" : "no"}</dd>
+          <dt>Related odds override</dt><dd>${forecast.rules?.relatedOddsNeverOverrideDirectMarket ? "never" : "allowed"}</dd>
+        </dl>
       </div>
-      <dl class="compact-dl">
-        <dt>Model disagreement</dt><dd>${formatPercent(forecast.modelDisagreement)}</dd>
-        <dt>Direct odds dominate</dt><dd>${forecast.rules?.directMarketEvidenceDominates ? "yes" : "no"}</dd>
-        <dt>Related odds override</dt><dd>${forecast.rules?.relatedOddsNeverOverrideDirectMarket ? "never" : "allowed"}</dd>
-      </dl>
-    </section>
+    </details>
   `;
 }
 
@@ -553,20 +643,26 @@ function renderNewsAndCorrelation(news, correlation) {
   if (!news && !correlation) return "";
   const related = correlation?.relatedMarkets || [];
   return `
-    <section class="news-corr-card">
-      <article>
-        <strong>News monitor</strong>
-        <span>${escapeHtml(news?.stance || "unknown")} · score ${formatSignedPercent(news?.score || 0)}</span>
-        <p>${escapeHtml(news?.argument || "No attached news signal.")}</p>
-        <ul>${(news?.topItems || []).slice(0, 3).map((item) => `<li>${escapeHtml(item.title)} <small>${escapeHtml(item.source || "")}</small></li>`).join("")}</ul>
-      </article>
-      <article>
-        <strong>Correlated odds instrument</strong>
-        <span>score ${formatSignedPercent(correlation?.score || 0)}</span>
-        <p>${escapeHtml(correlation?.argument || "No related odds signal.")}</p>
-        <ul>${related.slice(0, 4).map((item) => `<li>${escapeHtml(item.title || item.marketId)} <small>corr ${Number(item.correlation || 0).toFixed(2)} · delta ${formatSignedPercent(item.otherProbabilityDelta || 0)}</small></li>`).join("")}</ul>
-      </article>
-    </section>
+    <details class="news-corr-card analysis-disclosure" open>
+      <summary>
+        <span>News and correlation interpretation</span>
+        <small>${escapeHtml(news?.stance || "unknown")} / score ${formatSignedPercent(news?.score || 0)}</small>
+      </summary>
+      <div class="news-corr-grid">
+        <article>
+          <strong>News monitor</strong>
+          <span>${escapeHtml(news?.stance || "unknown")} / score ${formatSignedPercent(news?.score || 0)}</span>
+          <p>${escapeHtml(news?.argument || "No attached news signal.")}</p>
+          <ul>${(news?.topItems || []).slice(0, 3).map((item) => `<li>${escapeHtml(item.title)} <small>${escapeHtml(item.source || "")}</small></li>`).join("")}</ul>
+        </article>
+        <article>
+          <strong>Correlated odds instrument</strong>
+          <span>score ${formatSignedPercent(correlation?.score || 0)}</span>
+          <p>${escapeHtml(correlation?.argument || "No related odds signal.")}</p>
+          <ul>${related.slice(0, 4).map((item) => `<li>${escapeHtml(item.title || item.marketId)} <small>corr ${Number(item.correlation || 0).toFixed(2)} / delta ${formatSignedPercent(item.otherProbabilityDelta || 0)}</small></li>`).join("")}</ul>
+        </article>
+      </div>
+    </details>
   `;
 }
 
@@ -604,19 +700,21 @@ function renderForecastSvg(chart) {
   const lowerY = scaleY(chart?.lowerInterval || 0);
   const upperY = scaleY(chart?.upperInterval || 0);
   return `
-    <svg class="forecast-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Probability history with forecast interval">
-      <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" />
-      <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" />
-      <text x="6" y="${scaleY(max)}">${formatPercent(max)}</text>
-      <text x="6" y="${scaleY(min)}">${formatPercent(min)}</text>
-      <rect x="${forecastX - 10}" y="${Math.min(lowerY, upperY)}" width="20" height="${Math.abs(lowerY - upperY)}" rx="5" />
-      <polyline points="${points}" />
-      ${history.map((point, index) => `<circle cx="${scaleX(index, history.length + 1)}" cy="${scaleY(point.probability)}" r="3"><title>${escapeHtml(point.time)} ${formatPercent(point.probability)}</title></circle>`).join("")}
-      <circle class="forecast-dot" cx="${forecastX}" cy="${forecastY}" r="5" />
-      <text class="forecast-label" x="${forecastX - 34}" y="${Math.max(forecastY - 10, 12)}">forecast ${formatPercent(chart?.forecastProbability)}</text>
-      <text x="${left}" y="${height - 8}">history</text>
-      <text x="${forecastX - 30}" y="${height - 8}">next</text>
-    </svg>
+    <div class="chart-scroll">
+      <svg class="forecast-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Probability history with forecast interval">
+        <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" />
+        <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" />
+        <text x="6" y="${scaleY(max)}">${formatPercent(max)}</text>
+        <text x="6" y="${scaleY(min)}">${formatPercent(min)}</text>
+        <rect x="${forecastX - 10}" y="${Math.min(lowerY, upperY)}" width="20" height="${Math.abs(lowerY - upperY)}" rx="5" />
+        <polyline points="${points}" />
+        ${history.map((point, index) => `<circle cx="${scaleX(index, history.length + 1)}" cy="${scaleY(point.probability)}" r="3"><title>${escapeHtml(point.time)} ${formatPercent(point.probability)}</title></circle>`).join("")}
+        <circle class="forecast-dot" cx="${forecastX}" cy="${forecastY}" r="5" />
+        <text class="forecast-label" x="${forecastX - 34}" y="${Math.max(forecastY - 10, 12)}">forecast ${formatPercent(chart?.forecastProbability)}</text>
+        <text x="${left}" y="${height - 8}">history</text>
+        <text x="${forecastX - 30}" y="${height - 8}">next</text>
+      </svg>
+    </div>
   `;
 }
 
@@ -1029,23 +1127,25 @@ function renderModelProgressSvg(model) {
   const trendLine = trend.samples.map((sample) => `${scaleX(sample.x)},${scaleY(sample.prediction)}`).join(" ");
   const idealLine = `${scaleX(minX)},${scaleY(minX)} ${scaleX(maxX)},${scaleY(maxX)}`;
   return `
-    <svg class="model-progress-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(model.label)} probability trend with confidence interval">
-      <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" />
-      <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" />
-      <text x="8" y="${scaleY(maxY)}">${formatPercent(maxY)}</text>
-      <text x="8" y="${scaleY(minY)}">${formatPercent(minY)}</text>
-      <text x="${left}" y="${height - 12}">odds ${formatPercent(minX)}</text>
-      <text x="${width - 118}" y="${height - 12}">odds ${formatPercent(maxX)}</text>
-      <polygon class="ci-band" points="${bandTop} ${bandBottom}" />
-      <polyline class="ideal-line" points="${idealLine}" />
-      <polyline class="trend-line" points="${trendLine}" />
-      ${trend.points.map((point) => `
-        <circle class="${point.edge >= 0 ? "positive" : "negative"}" cx="${scaleX(point.x)}" cy="${scaleY(point.y)}" r="${Math.min(7, Math.max(3, 3 + Math.abs(point.edge) * 20))}">
-          <title>${escapeHtml(point.marketTitle)} · forecast ${formatPercent(point.y)} · odds ${formatPercent(point.x)} · edge ${formatSignedPercent(point.edge)}</title>
-        </circle>
-      `).join("")}
-      <text class="chart-caption" x="${left}" y="16">linear trend with 95% residual confidence interval</text>
-    </svg>
+    <div class="chart-scroll">
+      <svg class="model-progress-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(model.label)} probability trend with confidence interval">
+        <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" />
+        <line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" />
+        <text x="8" y="${scaleY(maxY)}">${formatPercent(maxY)}</text>
+        <text x="8" y="${scaleY(minY)}">${formatPercent(minY)}</text>
+        <text x="${left}" y="${height - 12}">odds ${formatPercent(minX)}</text>
+        <text x="${width - 118}" y="${height - 12}">odds ${formatPercent(maxX)}</text>
+        <polygon class="ci-band" points="${bandTop} ${bandBottom}" />
+        <polyline class="ideal-line" points="${idealLine}" />
+        <polyline class="trend-line" points="${trendLine}" />
+        ${trend.points.map((point) => `
+          <circle class="${point.edge >= 0 ? "positive" : "negative"}" cx="${scaleX(point.x)}" cy="${scaleY(point.y)}" r="${Math.min(7, Math.max(3, 3 + Math.abs(point.edge) * 20))}">
+            <title>${escapeHtml(point.marketTitle)} · forecast ${formatPercent(point.y)} · odds ${formatPercent(point.x)} · edge ${formatSignedPercent(point.edge)}</title>
+          </circle>
+        `).join("")}
+        <text class="chart-caption" x="${left}" y="16">linear trend with 95% residual confidence interval</text>
+      </svg>
+    </div>
   `;
 }
 
@@ -1087,21 +1187,23 @@ function renderModelScatter(points) {
     return height - pad - number * (height - pad * 1.5);
   };
   return `
-    <svg class="model-scatter" viewBox="0 0 ${width} ${height}" role="img" aria-label="Agent probability versus category ML probability">
-      <line x1="${pad}" y1="${height - pad}" x2="${width - pad / 2}" y2="${height - pad}" />
-      <line x1="${pad}" y1="${height - pad}" x2="${pad}" y2="${pad / 2}" />
-      <line class="ideal" x1="${pad}" y1="${height - pad}" x2="${width - pad / 2}" y2="${pad / 2}" />
-      <text x="${pad}" y="${height - 10}">agent probability</text>
-      <text x="8" y="20">ML probability</text>
-      ${points.slice(-320).map((point) => `
-        <circle class="category-${escapeHtml(point.category)} ${point.label === 1 ? "win" : point.label === 0 ? "loss" : "pending"}"
-          cx="${scale(point.agentProbability, "x")}"
-          cy="${scale(point.categoryMlProbability, "y")}"
-          r="${point.label === null || point.label === undefined ? 3 : 4}">
-          <title>${escapeHtml(point.category)} · ${escapeHtml(point.marketTitle)} · agent ${formatPercent(point.agentProbability)} · ML ${formatPercent(point.categoryMlProbability)}</title>
-        </circle>
-      `).join("")}
-    </svg>
+    <div class="chart-scroll">
+      <svg class="model-scatter" viewBox="0 0 ${width} ${height}" role="img" aria-label="Agent probability versus category ML probability">
+        <line x1="${pad}" y1="${height - pad}" x2="${width - pad / 2}" y2="${height - pad}" />
+        <line x1="${pad}" y1="${height - pad}" x2="${pad}" y2="${pad / 2}" />
+        <line class="ideal" x1="${pad}" y1="${height - pad}" x2="${width - pad / 2}" y2="${pad / 2}" />
+        <text x="${pad}" y="${height - 10}">agent probability</text>
+        <text x="8" y="20">ML probability</text>
+        ${points.slice(-320).map((point) => `
+          <circle class="category-${escapeHtml(point.category)} ${point.label === 1 ? "win" : point.label === 0 ? "loss" : "pending"}"
+            cx="${scale(point.agentProbability, "x")}"
+            cy="${scale(point.categoryMlProbability, "y")}"
+            r="${point.label === null || point.label === undefined ? 3 : 4}">
+            <title>${escapeHtml(point.category)} · ${escapeHtml(point.marketTitle)} · agent ${formatPercent(point.agentProbability)} · ML ${formatPercent(point.categoryMlProbability)}</title>
+          </circle>
+        `).join("")}
+      </svg>
+    </div>
     <div class="plot-legend">
       <span><b class="legend-dot pending"></b>pending</span>
       <span><b class="legend-dot win"></b>settled win</span>
@@ -1141,19 +1243,21 @@ function renderCorrelationHeatmap(category) {
   const index = Object.fromEntries(markets.map((market, idx) => [market.id, idx]));
   const cellByKey = Object.fromEntries(cells.map((cell) => [`${cell.left}:${cell.right}`, cell]));
   return `
-    <div class="correlation-heatmap" style="--matrix-size:${markets.length}">
-      <span class="matrix-corner"></span>
-      ${markets.map((market, idx) => `<span class="matrix-label x" title="${escapeHtml(market.title)}">${idx + 1}</span>`).join("")}
-      ${markets.map((market, rowIdx) => `
-        <span class="matrix-label y" title="${escapeHtml(market.title)}">${rowIdx + 1}</span>
-        ${markets.map((other) => {
-          const cell = cellByKey[`${market.id}:${other.id}`] || {};
-          const corr = cell.correlation;
-          const numeric = corr === null || corr === undefined ? 0 : Number(corr);
-          const alpha = Math.min(Math.abs(numeric), 1);
-          return `<span class="matrix-cell ${numeric < 0 ? "neg" : "pos"}" style="--alpha:${alpha}" title="${escapeHtml(market.title)} / ${escapeHtml(other.title)} · corr ${corr === null || corr === undefined ? "n/a" : Number(corr).toFixed(3)}"></span>`;
-        }).join("")}
-      `).join("")}
+    <div class="heatmap-scroll">
+      <div class="correlation-heatmap" style="--matrix-size:${markets.length}">
+        <span class="matrix-corner"></span>
+        ${markets.map((market, idx) => `<span class="matrix-label x" title="${escapeHtml(market.title)}">${idx + 1}</span>`).join("")}
+        ${markets.map((market, rowIdx) => `
+          <span class="matrix-label y" title="${escapeHtml(market.title)}">${rowIdx + 1}</span>
+          ${markets.map((other) => {
+            const cell = cellByKey[`${market.id}:${other.id}`] || {};
+            const corr = cell.correlation;
+            const numeric = corr === null || corr === undefined ? 0 : Number(corr);
+            const alpha = Math.min(Math.abs(numeric), 1);
+            return `<span class="matrix-cell ${numeric < 0 ? "neg" : "pos"}" style="--alpha:${alpha}" title="${escapeHtml(market.title)} / ${escapeHtml(other.title)} / corr ${corr === null || corr === undefined ? "n/a" : Number(corr).toFixed(3)}"></span>`;
+          }).join("")}
+        `).join("")}
+      </div>
     </div>
     <ol class="matrix-key">
       ${markets.map((market, idx) => `<li>${idx + 1}. ${escapeHtml(market.title)}</li>`).join("")}
@@ -1175,6 +1279,11 @@ function renderCorrelationPair(pair) {
 function shortTime(value) {
   if (!value) return "-";
   return String(value).replace("T", " ").replace("Z", "");
+}
+
+function shortDate(value) {
+  if (!value) return "-";
+  return String(value).slice(0, 10);
 }
 
 function renderDetailPicker(data) {
@@ -1229,22 +1338,22 @@ function renderBetDetail(candidateId) {
     </article>
     <article class="detail-side">
       <h3>History And Forecast Graph</h3>
-      <div class="odds-chart">${renderOddsChart(candidate.odds_history, item.blended_probability)}</div>
+      <div class="odds-chart">${renderOddsChart(candidate.odds_history || [], item.blended_probability)}</div>
       <dl class="compact-dl">
         <dt>Trend</dt><dd>${escapeHtml(detail.history_summary?.direction || "flat")}</dd>
         <dt>First / latest</dt><dd>${formatPercent(detail.history_summary?.first_price)} / ${formatPercent(detail.history_summary?.latest_price)}</dd>
         <dt>Min / max</dt><dd>${formatPercent(detail.history_summary?.min_price)} / ${formatPercent(detail.history_summary?.max_price)}</dd>
       </dl>
       <h3>Actors</h3>
-      <div class="actor-map">${candidate.actors.map((actor) => `<span>${escapeHtml(actor)}</span>`).join("")}</div>
+      <div class="actor-map">${(candidate.actors || []).map((actor) => `<span>${escapeHtml(actor)}</span>`).join("") || "<span>Market participants</span>"}</div>
     </article>
     <section class="detail-section">
       <h3>Collection And Model Lifecycle</h3>
       <div class="process-flow">
-        ${renderLifecycleStep("Gathered", dashboard.created_at, "Public market and odds data retrieved for the research snapshot.")}
-        ${renderLifecycleStep("Estimated", detail.decision_made_at || dashboard.created_at, "Forecast and reliability metrics computed from timestamp-valid inputs.")}
-        ${renderLifecycleStep("Paper timestamp", detail.decision_made_at || dashboard.created_at, "Research-only paper timestamp recorded; no wallet or order execution.")}
-        ${renderLifecycleStep("Resolution", candidate.end_time, candidate.resolved_outcome ? `Resolved as ${candidate.resolved_outcome}.` : "Expected/pending resolution status.")}
+        ${renderLifecycleStep("Gathered", dashboard.created_at, "Public market and odds data retrieved for the research snapshot.", "1")}
+        ${renderLifecycleStep("Estimated", detail.decision_made_at || dashboard.created_at, "Forecast and reliability metrics computed from timestamp-valid inputs.", "2")}
+        ${renderLifecycleStep("Paper timestamp", detail.decision_made_at || dashboard.created_at, "Research-only paper timestamp recorded; no wallet or order execution.", "3")}
+        ${renderLifecycleStep("Resolution", candidate.end_time, candidate.resolved_outcome ? `Resolved as ${candidate.resolved_outcome}.` : "Expected/pending resolution status.", "4")}
       </div>
     </section>
     <section class="detail-section">
@@ -1254,7 +1363,7 @@ function renderBetDetail(candidateId) {
     <section class="detail-section">
       <h3>News Motivation</h3>
       <p>${escapeHtml(detail.news_motivation || "")}</p>
-      <ul class="timeline">${candidate.news_items.map(renderNewsItem).join("")}</ul>
+      <ul class="timeline">${(candidate.news_items || []).map(renderNewsItem).join("")}</ul>
     </section>
     <section class="detail-section">
       <h3>Monitored Values</h3>
@@ -1312,12 +1421,17 @@ function modelCardsFor(item, detail) {
   return cards;
 }
 
-function renderLifecycleStep(label, time, body) {
+function renderLifecycleStep(label, time, body, marker) {
   return `
     <article class="process-step">
-      <strong>${escapeHtml(label)}</strong>
-      <span>${escapeHtml(time || "-")}</span>
-      <p>${escapeHtml(body || "")}</p>
+      <span class="step-marker">${escapeHtml(marker || label.slice(0, 1))}</span>
+      <div class="process-step-body">
+        <header class="process-step-header">
+          <strong>${escapeHtml(label)}</strong>
+          <time>${escapeHtml(time || "-")}</time>
+        </header>
+        <p>${escapeHtml(body || "")}</p>
+      </div>
     </article>
   `;
 }
