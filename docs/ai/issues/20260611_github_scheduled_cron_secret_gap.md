@@ -17,6 +17,12 @@ FACT: Public job-log download returned `403` because the local GitHub CLI is not
 
 FACT: `gh auth status` reports no authenticated GitHub host.
 
+FACT: Commit `f6184f3` added a dedicated `Check scheduled execution credentials` workflow step and push CI run `27329212023` completed successfully.
+
+FACT: After waiting through the next expected scheduler window, the public GitHub Actions API still showed no scheduled run on commit `f6184f3`; the latest scheduled run remained `27328905704` on commit `5823fc5`.
+
+FACT: The workflow state is `active` according to the public GitHub Actions workflow API.
+
 INTERPRETATION: The likely blocker is missing GitHub Actions `CRON_SECRET`/`VERCEL_CRON_URL` or local durable storage secrets for scheduled runs. This cannot be confirmed from public metadata alone.
 
 ## Impact
