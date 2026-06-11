@@ -10,6 +10,7 @@ Run the external proof bundle, update/deploy the website, add deployable cron au
 - Vercel Hobby also rejected more than 12 serverless functions. `.vercelignore` now limits the deployable function surface to 12 while preserving source files locally.
 - A random production `CRON_SECRET` was added through Vercel CLI without printing or storing its value.
 - Final smoke checks returned: root 200, `/api/health` 200 with `cron_secret_configured=true`, `/api/dashboard-contract` 200, `/api/runs/latest` 200, and unauthenticated `/api/cron-daily` 401.
+- Scoped milestone commit `989f668` was pushed to `origin/main`, so the updated GitHub Actions workflow and dashboard/API code are available remotely.
 - A live durable daily run existed in Vercel Blob with `sourceMode=live`, `status=success`, `paperTradingOnly=true`, and zero paper bets.
 - The live run exposed stale out-of-scope sports spread markets. `DataAgent` and `dashboard_api` were hardened so sports-like text such as `Spread: Golden State Valkyries (-7.5)` is rejected/filtered even if stale stored category labels say politics.
 
@@ -21,6 +22,7 @@ The website and deployable Vercel daily automation are live. The dashboard is no
 - Vercel durable storage is configured through Blob, but the planned Postgres migration was not applied because no local database URL is configured.
 - Live official-source validation is partial: public probes ran, but BLS/SEC returned 403 and politics produced source-health-only evidence, not parser-verified decision evidence.
 - The next authenticated Vercel daily cron run should produce a fresh post-filter live run; unauthenticated manual cron calls are now correctly rejected.
+- GitHub Actions scheduled-run proof could not be inspected from this shell because `gh` is not authenticated.
 
 ## Validation
 - `python3 -m unittest discover -s tests` - passed, 57 tests.
@@ -31,7 +33,9 @@ The website and deployable Vercel daily automation are live. The dashboard is no
 - `python3 -m sports_edge.cli external-proof-bundle --as-of 2026-06-10` - passed.
 - Production smoke: `/`, `/api/health`, `/api/dashboard-contract`, and `/api/runs/latest` returned 200.
 - Production cron safety: unauthenticated `/api/cron-daily` returned 401.
+- Post-push production smoke: `/` returned 200, `/api/health` returned `ok=true`, `/api/dashboard-contract` returned `paperTradingOnly=true`, and unauthenticated `/api/cron-daily` returned 401.
 - Dashboard stale-scope smoke: deployed dashboard contract contains no `golden state` or `valkyries` text and reports filtering 2 out-of-scope stored markets.
+- `gh run list --limit 10 --json ...` - not verified because GitHub CLI is not authenticated in this environment.
 
 ## Files Changed
 - `.vercelignore`
