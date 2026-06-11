@@ -736,6 +736,7 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertIn("VERCEL_CRON_URL", workflow)
         self.assertIn("/api/cron-collector?source=live", workflow)
         self.assertIn("/api/cron-daily?source=live", workflow)
+        self.assertIn("Check scheduled execution credentials", workflow)
         self.assertIn("run-collector --source live", workflow)
         self.assertIn("run-daily --source live", workflow)
         self.assertIn("run-daily --source fixture --target-count 30 --dry-run", workflow)

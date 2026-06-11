@@ -29,5 +29,8 @@ The 15-minute scheduled collector cannot be proven in production, so `docs/ai/pr
 4. Re-run or wait for the next scheduled workflow.
 5. Capture sanitized scheduled evidence and generate `docs/ai/proofs/20260611_production_cron_run.json`.
 
+## Follow-Up Instrumentation
+Commit pending after this issue adds a dedicated `Check scheduled execution credentials` workflow step. Future public job metadata should identify missing scheduled credentials separately from deployed cron endpoint failures.
+
 ## Safety Notes
 Do not store the secret value in git, logs, notes, proof files, or chat. Use GitHub/Vercel native secret storage only.

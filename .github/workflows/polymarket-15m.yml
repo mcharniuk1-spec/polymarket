@@ -51,7 +51,34 @@ jobs:
           print("source_registry_ok", dict(sorted(counts.items())))
           PY
 
-      - name: Run managed research cycle
+      - name: Check scheduled execution credentials
+        if: github.event_name == 'schedule'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL }}
+          POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL || 'https://polymarket-research-dashboard.vercel.app' }}
+        run: |
+          set -euo pipefail
+          HAS_LOCAL_DURABLE=false
+          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
+            HAS_LOCAL_DURABLE=true
+          fi
+          REMOTE_CRON_BASE="${VERCEL_CRON_URL%/}"
+          HAS_REMOTE_CRON=false
+          if [ -n "${CRON_SECRET:-}" ] && [ -n "${REMOTE_CRON_BASE:-}" ]; then
+            HAS_REMOTE_CRON=true
+          fi
+          if [ "${HAS_REMOTE_CRON}" = "false" ] && [ "${HAS_LOCAL_DURABLE}" = "false" ]; then
+            echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+            exit 1
+          fi
+          echo "scheduled_execution_credentials_ok"
+
+      - name: Run scheduled or managed research cycle
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           POSTGRES_URL: ${{ secrets.POSTGRES_URL }}

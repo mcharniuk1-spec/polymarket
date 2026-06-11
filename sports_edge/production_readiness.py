@@ -120,7 +120,9 @@ def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
     ]
     return _check(
         "durable_storage_gate",
-        all(key in workflow for key in required) and "Missing scheduled cron execution credentials" in workflow,
+        all(key in workflow for key in required)
+        and "Check scheduled execution credentials" in workflow
+        and "Missing scheduled cron execution credentials" in workflow,
         "Workflow fails closed when neither deployed cron auth nor local durable storage is configured.",
         {"requiredEnvNames": required},
         "Keep scheduled writes behind deployed cron auth or durable storage configuration.",
