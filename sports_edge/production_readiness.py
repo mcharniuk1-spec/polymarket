@@ -75,12 +75,14 @@ def _check_workflow_exists(workflow: str) -> dict[str, Any]:
 
 
 def _check_15m_collector(workflow: str) -> dict[str, Any]:
+    remote_collector = "/api/cron-collector?source=live" in workflow and "CRON_SECRET" in workflow
+    local_collector = "run-collector --source live" in workflow
     return _check(
         "collector_15m_live",
-        'cron: "*/15 * * * *"' in workflow and "run-collector --source live" in workflow,
-        "15-minute schedule runs read-only live collector.",
-        {"cron": "*/15 * * * *", "command": "run-collector --source live"},
-        "Wire the 15-minute schedule to the read-only live collector.",
+        'cron: "*/15 * * * *"' in workflow and (remote_collector or local_collector),
+        "15-minute schedule runs read-only live collector through deployed cron or local durable fallback.",
+        {"cron": "*/15 * * * *", "remotePath": "/api/cron-collector?source=live", "localCommand": "run-collector --source live"},
+        "Wire the 15-minute schedule to the read-only live collector through deployed cron auth or local durable storage.",
     )
 
 
@@ -95,17 +97,21 @@ def _check_sofia_daily_windows(workflow: str) -> dict[str, Any]:
 
 
 def _check_daily_live_readonly(workflow: str) -> dict[str, Any]:
+    remote_daily = "/api/cron-daily?source=live" in workflow and "CRON_SECRET" in workflow
+    local_daily = "run-daily --source live" in workflow
     return _check(
         "daily_live_readonly",
-        "run-daily --source live" in workflow and '"sourceMode": "live"' in workflow,
-        "Scheduled daily analytical run uses read-only live data and validates live source mode.",
-        {"command": "run-daily --source live"},
+        (remote_daily or local_daily) and '"sourceMode": "live"' in workflow,
+        "Scheduled daily analytical run uses read-only live data through deployed cron or local durable fallback.",
+        {"remotePath": "/api/cron-daily?source=live", "localCommand": "run-daily --source live"},
         "Run scheduled daily analysis with live read-only data, not fixture data.",
     )
 
 
 def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
     required = [
+        "CRON_SECRET",
+        "VERCEL_CRON_URL",
         "DATABASE_URL",
         "POSTGRES_URL",
         "POSTGRES_PRISMA_URL",
@@ -114,10 +120,10 @@ def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
     ]
     return _check(
         "durable_storage_gate",
-        all(key in workflow for key in required) and "Missing durable storage secret" in workflow,
-        "Workflow fails closed when no durable storage secret is configured.",
+        all(key in workflow for key in required) and "Missing scheduled cron execution credentials" in workflow,
+        "Workflow fails closed when neither deployed cron auth nor local durable storage is configured.",
         {"requiredEnvNames": required},
-        "Keep scheduled writes behind durable storage configuration.",
+        "Keep scheduled writes behind deployed cron auth or durable storage configuration.",
     )
 
 

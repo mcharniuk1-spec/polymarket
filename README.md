@@ -169,7 +169,7 @@ python3 -m sports_edge.cli run-collector --source live --target-count "$TARGET_C
 
 Required production secrets:
 
-- GitHub: `VERCEL_CRON_URL`, `CRON_SECRET`
+- GitHub: `VERCEL_CRON_URL`, `CRON_SECRET` for scheduled calls into deployed cron routes; optional `DATABASE_URL`/`POSTGRES_URL`/`BLOB_READ_WRITE_TOKEN` only if GitHub should run durable local writes directly.
 - Vercel: `CRON_SECRET`, `DATABASE_URL` or `POSTGRES_URL`
 
 PostgreSQL is the preferred durable store. When a database URL is configured, each run writes both JSON state and queryable relational projections:
@@ -228,7 +228,7 @@ Use the goal audit to see which parts of the full Polymarket system goal are loc
 python3 -m sports_edge.cli goal-audit
 ```
 
-Use the production-readiness check before deployment or scheduled-job review. It validates local GitHub Actions/Vercel/API wiring, including live read-only scheduled collector and daily commands, but it does not prove that production jobs have actually run:
+Use the production-readiness check before deployment or scheduled-job review. It validates GitHub Actions/Vercel/API wiring, including live read-only scheduled collector and daily cron routes, but it does not prove that production jobs have actually run:
 
 ```bash
 python3 -m sports_edge.cli production-readiness

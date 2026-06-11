@@ -59,6 +59,8 @@ jobs:
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
           BLOB_STORE_ID: ${{ secrets.BLOB_STORE_ID }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_CRON_URL: ${{ secrets.VERCEL_CRON_URL || 'https://polymarket-research-dashboard.vercel.app' }}
           POLYMARKET_STATE_PREFIX: ${{ vars.POLYMARKET_STATE_PREFIX || 'polymarket/state' }}
           TARGET_COUNT: ${{ github.event.inputs.target_count || '80' }}
           GLOBAL_REVIEW_INPUT: ${{ github.event.inputs.global_review || 'false' }}
@@ -66,23 +68,51 @@ jobs:
           SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
-          if [ -z "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
-            if [ "${EVENT_NAME}" = "schedule" ]; then
-              echo "Missing durable storage secret. Configure DATABASE_URL/POSTGRES_URL or BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+          HAS_LOCAL_DURABLE=false
+          if [ -n "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
+            HAS_LOCAL_DURABLE=true
+          fi
+          REMOTE_CRON_BASE="${VERCEL_CRON_URL%/}"
+          HAS_REMOTE_CRON=false
+          if [ -n "${CRON_SECRET:-}" ] && [ -n "${REMOTE_CRON_BASE:-}" ]; then
+            HAS_REMOTE_CRON=true
+          fi
+
+          if [ "${EVENT_NAME}" = "schedule" ]; then
+            if [ "${SCHEDULE}" = "0 6 * * *" ] || [ "${SCHEDULE}" = "0 7 * * *" ]; then
+              if [ "${HAS_REMOTE_CRON}" = "true" ]; then
+                curl --fail --show-error --silent --max-time 90 \
+                  -H "Authorization: Bearer ${CRON_SECRET}" \
+                  "${REMOTE_CRON_BASE}/api/cron-daily?source=live&target_count=30" | tee response.json
+                exit 0
+              fi
+              if [ "${HAS_LOCAL_DURABLE}" = "true" ]; then
+                python3 -m sports_edge.cli run-daily --source live --target-count 30 | tee response.json
+                exit 0
+              fi
+              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
               exit 1
             fi
+
+            if [ "${SCHEDULE}" = "*/15 * * * *" ]; then
+              if [ "${HAS_REMOTE_CRON}" = "true" ]; then
+                curl --fail --show-error --silent --max-time 90 \
+                  -H "Authorization: Bearer ${CRON_SECRET}" \
+                  "${REMOTE_CRON_BASE}/api/cron-collector?source=live&target_count=${TARGET_COUNT}" | tee response.json
+                exit 0
+              fi
+              if [ "${HAS_LOCAL_DURABLE}" = "true" ]; then
+                python3 -m sports_edge.cli run-collector --source live --target-count "${TARGET_COUNT}" | tee response.json
+                exit 0
+              fi
+              echo "Missing scheduled cron execution credentials. Configure CRON_SECRET/VERCEL_CRON_URL or DATABASE_URL/POSTGRES_URL/BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+              exit 1
+            fi
+          fi
+
+          if [ "${HAS_LOCAL_DURABLE}" = "false" ]; then
             echo "Missing durable storage secret; running non-scheduled fixture dry-run proof."
             python3 -m sports_edge.cli run-daily --source fixture --target-count 30 --dry-run | tee response.json
-            exit 0
-          fi
-
-          if [ "${SCHEDULE}" = "0 6 * * *" ] || [ "${SCHEDULE}" = "0 7 * * *" ]; then
-            python3 -m sports_edge.cli run-daily --source live --target-count 30 | tee response.json
-            exit 0
-          fi
-
-          if [ "${SCHEDULE}" = "*/15 * * * *" ]; then
-            python3 -m sports_edge.cli run-collector --source live --target-count "${TARGET_COUNT}" | tee response.json
             exit 0
           fi
 
