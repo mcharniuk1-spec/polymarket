@@ -23,6 +23,8 @@ INTERPRETATION: This reduces GitHub secret blast radius because the 15-minute sc
 
 GAP: Production cron proof is still missing until a real scheduled run on the updated workflow succeeds and sanitized evidence is written to `docs/ai/proofs/20260611_production_cron_run.json`.
 
+GAP: The first observed scheduled run after this update, GitHub Actions run `27328905704`, failed in the `Run managed research cycle` step. Public metadata does not expose enough detail to prove the exact cause, and local `gh auth status` shows no authenticated GitHub host for admin log access.
+
 ## Commands / Checks
 - `python3 -m unittest tests.test_pipeline.MilestoneOneContractTests.test_github_workflow_runs_contract_collector_and_sofia_daily tests.test_pipeline.MilestoneOneContractTests.test_production_readiness_contract_validates_local_deploy_surface`
 - `python3 -m sports_edge.cli production-readiness`
@@ -35,12 +37,14 @@ GAP: Production cron proof is still missing until a real scheduled run on the up
 - `python3 -m sports_edge.cli goal-audit`
 - `python3 -m sports_edge.cli run-collector --source fixture --as-of 2026-06-10T06:07:30Z --dry-run`
 - `python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --dry-run`
+- `curl --max-time 20 -sS https://api.github.com/repos/mcharniuk1-spec/polymarket/actions/runs?event=schedule&branch=main&per_page=5`
+- `curl --max-time 20 -sS https://api.github.com/repos/mcharniuk1-spec/polymarket/actions/runs/27328905704/jobs`
+- `gh auth status`
 
 ## Status
-Completed locally. Pending commit, push, and observation of the next scheduled production run.
+Completed locally and pushed as commit `5823fc5`. Push CI succeeded; scheduled production proof remains blocked by a failed scheduled run that likely needs GitHub Actions secret/config access.
 
 ## Next Steps
-1. Push the workflow update.
-2. Verify the push CI run.
-3. Observe the next scheduled run after the workflow update.
-4. If scheduled collector and Sofia daily evidence both pass with `sourceMode=live`, generate production cron proof.
+1. Add or verify GitHub Actions `CRON_SECRET` and `VERCEL_CRON_URL`, or provide authenticated GitHub access to inspect scheduled-run logs.
+2. Re-run or wait for the next scheduled run after secrets are confirmed.
+3. If scheduled collector and Sofia daily evidence both pass with `sourceMode=live`, generate production cron proof.
