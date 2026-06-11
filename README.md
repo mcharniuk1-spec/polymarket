@@ -260,6 +260,15 @@ python3 -m sports_edge.cli production-cron-proof --evidence-in sanitized-cron-ev
 
 The proof command strips URL query strings/fragments, requires `paper_trading_only=true`, `durable_storage_gate_passed=true`, `logs_contain_credentials=false`, `wallet_or_order_execution_enabled=false`, and refuses incomplete collector/daily evidence.
 
+Approved live-source validation is also proof-file gated. After an approved read-only live dry-run and source/ToS review, create sanitized evidence with `sourceMode=live`, one observed row for each active category (`macroeconomics`, `politics`, and `stocks_trade`), parser-verified numeric observation counts, rule/resolution capture checks, and no wallet/order execution:
+
+```bash
+python3 -m sports_edge.cli live-source-proof --evidence-in sanitized-live-source-evidence.json --dry-run
+python3 -m sports_edge.cli live-source-proof --evidence-in sanitized-live-source-evidence.json --proof-out docs/ai/proofs/20260611_live_source_validation.json
+```
+
+The live-source proof stores only validation counts and booleans. It rejects missing category evidence, missing parser-verified observations, missing resolution proof validation, logs with credential exposure, or any wallet/order execution flag.
+
 ## Verification
 
 ```bash
@@ -272,6 +281,7 @@ python3 -m sports_edge.cli goal-audit
 python3 -m sports_edge.cli production-readiness
 python3 -m sports_edge.cli external-proof-bundle --as-of 2026-06-10
 python3 -m sports_edge.cli production-cron-proof --evidence-in sanitized-cron-evidence.json --dry-run
+python3 -m sports_edge.cli live-source-proof --evidence-in sanitized-live-source-evidence.json --dry-run
 python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --dry-run
 python3 -m sports_edge.cli run-collector --source fixture --as-of 2026-06-10T06:07:30Z --dry-run
 python3 -m sports_edge.cli run-managed-cycle --source fixture --cycle-type manual --target-count 30 --dry-run

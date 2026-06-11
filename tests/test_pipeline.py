@@ -16,7 +16,7 @@ from sports_edge.agents import ACTIVE_CATEGORIES, MarketDataAgent, MultiAgentPip
 from sports_edge.app import health_payload
 from sports_edge.bet_research import BetResearchPlanner
 from sports_edge.codex_queue import drain_codex_queue, enqueue_codex_review, queue_summary
-from sports_edge.cli import run_migrations, run_production_cron_proof
+from sports_edge.cli import run_live_source_proof, run_migrations, run_production_cron_proof
 from sports_edge.dashboard_data import build_dashboard_payload, build_report_text
 from sports_edge.dashboard_api import (
     dashboard_contract_from_daily,
@@ -45,7 +45,12 @@ from sports_edge.odds_math import american_to_decimal, american_to_implied_proba
 from sports_edge.orchestrator import CollectorRunConfig, DailyRunConfig, run_collector, run_daily_analysis
 from sports_edge.outcome_evaluator import evaluate_previous_paper_bets
 from sports_edge.production_readiness import build_production_readiness
-from sports_edge.proof_capture import build_production_cron_proof, validate_production_cron_proof
+from sports_edge.proof_capture import (
+    build_live_source_proof,
+    build_production_cron_proof,
+    validate_live_source_proof,
+    validate_production_cron_proof,
+)
 from sports_edge.reporting import PerformanceReporter
 from sports_edge.risk_control import RESEARCH_ONLY_MODE, RiskControl
 from sports_edge.safety import SafetyGateError, assert_paper_trading_only
@@ -520,6 +525,52 @@ def _valid_cron_evidence() -> dict[str, object]:
     }
 
 
+def _valid_live_source_evidence() -> dict[str, object]:
+    return {
+        "asOf": "2026-06-11",
+        "run": {
+            "id": "live-dry-run-20260611",
+            "sourceMode": "live",
+            "asOf": "2026-06-11T06:00:00Z",
+            "command": "python3 -m sports_edge.cli run-daily --source live --dry-run",
+        },
+        "categories": {
+            "macroeconomics": {
+                "observed": True,
+                "sourceCount": 3,
+                "parserVerifiedObservationCount": 2,
+                "marketRuleCount": 4,
+                "resolutionProofCount": 1,
+            },
+            "politics": {
+                "observed": True,
+                "sourceCount": 3,
+                "parserVerifiedObservationCount": 2,
+                "marketRuleCount": 4,
+                "resolutionProofCount": 1,
+            },
+            "stocks_trade": {
+                "observed": True,
+                "sourceCount": 3,
+                "parserVerifiedObservationCount": 2,
+                "marketRuleCount": 4,
+                "resolutionProofCount": 1,
+            },
+        },
+        "checks": {
+            "read_only_public_sources": True,
+            "tos_review_completed": True,
+            "parser_verified_numeric_observations": True,
+            "source_health_only_not_decision_evidence": True,
+            "rules_resolution_captured": True,
+            "live_resolution_proof_validated": True,
+            "resolved_outcome_public_proof_url_captured": True,
+            "wallet_or_order_execution_enabled": False,
+            "logs_contain_credentials": False,
+        },
+    }
+
+
 class MilestoneOneContractTests(unittest.TestCase):
     def test_daily_orchestrator_dry_run_validates_contract_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -814,6 +865,50 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("sofia_daily.observed must be true", payload["validationErrors"])
 
+    def test_live_source_proof_builder_requires_all_active_categories(self) -> None:
+        proof = build_live_source_proof(_valid_live_source_evidence())
+        proof_text = json.dumps(proof, sort_keys=True)
+
+        self.assertEqual(validate_live_source_proof(proof), [])
+        self.assertTrue(goal_audit_module._live_source_proof_valid(proof, require_resolution=False))
+        self.assertTrue(goal_audit_module._live_source_proof_valid(proof, require_resolution=True))
+        self.assertEqual(set(proof["categories"]), {"macroeconomics", "politics", "stocks_trade"})
+        self.assertNotIn("DATABASE_URL", proof_text)
+        self.assertNotIn("secret", proof_text.lower())
+
+    def test_cli_live_source_proof_dry_run_does_not_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "live-source-evidence.json"
+            proof_path = Path(tmpdir) / "live-source-proof.json"
+            evidence_path.write_text(json.dumps(_valid_live_source_evidence()), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_live_source_proof(str(evidence_path), str(proof_path), dry_run=True)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["written"])
+        self.assertEqual(payload["reason"], "dry_run")
+        self.assertEqual(payload["validationErrors"], [])
+
+    def test_cli_live_source_proof_rejects_missing_parser_evidence(self) -> None:
+        evidence = _valid_live_source_evidence()
+        evidence["categories"]["politics"]["parserVerifiedObservationCount"] = 0
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "live-source-evidence.json"
+            proof_path = Path(tmpdir) / "live-source-proof.json"
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_live_source_proof(str(evidence_path), str(proof_path), dry_run=False)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 1)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["ok"])
+        self.assertIn("categories.politics.parserVerifiedObservationCount must be at least 1", payload["validationErrors"])
+
     def test_external_proof_bundle_is_safe_and_secret_free(self) -> None:
         database_url = "postgresql://user:secret-password@localhost:5432/polymarket"
         with mock.patch.dict(os.environ, {"DATABASE_URL": database_url}, clear=False):
@@ -837,8 +932,10 @@ class MilestoneOneContractTests(unittest.TestCase):
         proof_paths = {row["id"]: row.get("proofPath") for row in payload["proofItems"]}
         self.assertEqual(proof_paths["postgres_apply_proof"], goal_audit_module.POSTGRES_PROOF_PATH)
         self.assertEqual(proof_paths["production_cron_run_proof"], goal_audit_module.PRODUCTION_CRON_PROOF_PATH)
+        self.assertEqual(proof_paths["approved_live_source_validation"], goal_audit_module.LIVE_SOURCE_PROOF_PATH)
         approved_commands = {row["id"]: row.get("approvedCommand", "") for row in payload["proofItems"]}
         self.assertIn("production-cron-proof", approved_commands["production_cron_run_proof"])
+        self.assertIn("live-source-proof", approved_commands["approved_live_source_validation"])
         self.assertTrue(all(row["status"] == "approval_required" for row in payload["proofItems"]))
 
     def test_cli_external_proof_bundle_outputs_no_secret_values(self) -> None:
@@ -1503,6 +1600,28 @@ class OutcomeEvaluationTests(unittest.TestCase):
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["summary"]["proven"], 12)
         self.assertEqual(payload["summary"]["missing"], 1)
+
+    def test_goal_audit_accepts_valid_live_source_proof_file(self) -> None:
+        valid_live_source_proof = build_live_source_proof(_valid_live_source_evidence())
+        original_read_json = goal_audit_module._read_json
+
+        def fake_read_json(path: str) -> dict[str, object]:
+            if path == "docs/ai/proofs/20260611_live_source_validation.json":
+                return valid_live_source_proof
+            return original_read_json(path)
+
+        with mock.patch("sports_edge.goal_audit._read_json", side_effect=fake_read_json):
+            payload = build_goal_audit()
+
+        statuses = {row["id"]: row["status"] for row in payload["requirements"]}
+        self.assertEqual(statuses["live_official_adapters"], "proven")
+        self.assertEqual(statuses["live_resolution_proof"], "proven")
+        self.assertEqual(statuses["postgres_apply_proof"], "missing")
+        self.assertEqual(statuses["deployed_cron_proof"], "missing")
+        self.assertFalse(payload["complete"])
+        self.assertEqual(payload["summary"]["proven"], 13)
+        self.assertEqual(payload["summary"]["partial"], 0)
+        self.assertEqual(payload["summary"]["missing"], 2)
 
     def test_goal_audit_accepts_valid_postgres_migration_proof_file(self) -> None:
         valid_postgres_proof = {

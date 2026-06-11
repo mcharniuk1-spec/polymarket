@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .goal_audit import build_goal_audit
-from .goal_audit import POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
+from .goal_audit import LIVE_SOURCE_PROOF_PATH, POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
 from .production_readiness import build_production_readiness
 from .state_store import configured_database_url
 
@@ -95,7 +95,8 @@ def _proof_items() -> list[dict[str, Any]]:
             "status": "approval_required",
             "whyRequired": "Live Polymarket and official external adapters must be validated against approved public sources.",
             "safeDryRunCommand": "python3 -m sports_edge.cli run-daily --source fixture --as-of 2026-06-10 --dry-run",
-            "approvedCommand": "python3 -m sports_edge.cli run-daily --source live --dry-run",
+            "approvedCommand": f"python3 -m sports_edge.cli live-source-proof --evidence-in <sanitized-live-source-evidence.json> --proof-out {LIVE_SOURCE_PROOF_PATH}",
+            "proofPath": LIVE_SOURCE_PROOF_PATH,
             "requires": ["network approval", "source-specific ToS/access review", "read-only public endpoints only"],
             "expectedEvidence": [
                 "sourceMode=live",

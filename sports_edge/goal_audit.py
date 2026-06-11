@@ -12,6 +12,7 @@ from .schemas import MODEL_FAMILIES
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POSTGRES_PROOF_PATH = "docs/ai/proofs/20260611_postgres_migration_proof.json"
 PRODUCTION_CRON_PROOF_PATH = "docs/ai/proofs/20260611_production_cron_run.json"
+LIVE_SOURCE_PROOF_PATH = "docs/ai/proofs/20260611_live_source_validation.json"
 
 MILESTONE_TABLES = (
     "cron_runs",
@@ -41,8 +42,8 @@ REQUIREMENTS = [
     ("dashboard_api", "Dashboard/API exposes status, freshness, context, candidates, decisions, models, sources, portfolio, performance, warnings, errors.", ["sports_edge/dashboard_api.py", "api/dashboard-contract.py", "web/app.js"]),
     ("storage_schemas", "Structured schemas and migration definitions exist for core records.", ["sports_edge/schemas.py", "sports_edge/migrations.py", "sports_edge/state_store.py"]),
     ("tests_validation", "Tests and local dry-runs cover contracts, collectors, models, decisions, safety, cron, dashboard shape.", ["tests/test_pipeline.py", "README.md"]),
-    ("live_official_adapters", "Read-only live official external adapters are implemented and source/ToS reviewed.", ["sports_edge/external_adapters.py"]),
-    ("live_resolution_proof", "Live resolved-outcome proof ingestion exists.", ["sports_edge/outcome_evaluator.py"]),
+    ("live_official_adapters", "Read-only live official external adapters are implemented and source/ToS reviewed.", ["sports_edge/external_adapters.py", LIVE_SOURCE_PROOF_PATH]),
+    ("live_resolution_proof", "Live resolved-outcome proof ingestion exists.", ["sports_edge/outcome_evaluator.py", LIVE_SOURCE_PROOF_PATH]),
     ("postgres_apply_proof", "Postgres migrations have been applied and verified against a real DB.", ["sports_edge/cli.py", "sports_edge/state_store.py", POSTGRES_PROOF_PATH]),
     ("deployed_cron_proof", "GitHub/Vercel scheduled jobs have run successfully in production.", [".github/workflows/polymarket-15m.yml", "vercel.json", PRODUCTION_CRON_PROOF_PATH]),
     ("deployed_dashboard_proof", "Vercel dashboard/API is deployed and externally verified.", ["vercel.json", "web/app.js", "docs/ai/proofs/20260611_vercel_dashboard_smoke.json"]),
@@ -96,7 +97,7 @@ def _status_for_requirement(requirement_id: str, evidence: list[dict[str, Any]],
     if requirement_id == "deployed_cron_proof":
         return "proven" if all(row.get("passed") for row in checks) else "missing"
     if requirement_id in {"live_official_adapters", "live_resolution_proof"}:
-        return "partial"
+        return "proven" if all(row.get("passed") for row in checks) else "partial"
     file_evidence_ok = all(row["exists"] and row["size"] > 0 for row in evidence)
     checks_ok = all(row.get("passed") for row in checks)
     return "proven" if file_evidence_ok and checks_ok else "missing"
@@ -194,6 +195,7 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
     if requirement_id == "live_official_adapters":
         adapters = _read_text("sports_edge/external_adapters.py")
         model_scoring = _read_text("sports_edge/model_scoring.py")
+        proof = _read_json(LIVE_SOURCE_PROOF_PATH)
         return [
             _check(
                 "live_adapter_code_exists",
@@ -203,13 +205,22 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
                 and "official_source_http_ok" in adapters,
             ),
             _check("health_rows_not_decision_evidence", "source_health_not_decision_evidence" in adapters and "_is_decision_evidence" in model_scoring),
-            _check("external_proof_required", True, {"proofItem": "approved_live_source_validation"}),
+            _check(
+                "approved_live_source_validation",
+                _live_source_proof_valid(proof, require_resolution=False),
+                {"proofItem": "approved_live_source_validation", "proofPath": LIVE_SOURCE_PROOF_PATH},
+            ),
         ]
     if requirement_id == "live_resolution_proof":
         evaluator = _read_text("sports_edge/outcome_evaluator.py")
+        proof = _read_json(LIVE_SOURCE_PROOF_PATH)
         return [
             _check("stored_resolution_evaluator_exists", "resolvedOutcomes" in evaluator and "resolution" in evaluator.lower()),
-            _check("external_proof_required", True, {"proofItem": "approved_live_source_validation"}),
+            _check(
+                "approved_live_resolution_validation",
+                _live_source_proof_valid(proof, require_resolution=True),
+                {"proofItem": "approved_live_source_validation", "proofPath": LIVE_SOURCE_PROOF_PATH},
+            ),
         ]
     if requirement_id == "postgres_apply_proof":
         proof = _read_json(POSTGRES_PROOF_PATH)
@@ -267,8 +278,8 @@ def _gap_for_requirement(requirement_id: str, status: str) -> str | None:
     if status == "proven":
         return None
     gaps = {
-        "live_official_adapters": "Adapters are read-only and callable, but live source parsing/ToS-specific numeric extraction still requires approved network validation.",
-        "live_resolution_proof": "Stored closed-market snapshot resolution exists; live proof URL ingestion still needs approved public endpoint validation.",
+        "live_official_adapters": f"Adapters are read-only and callable, but live source parsing/ToS-specific numeric extraction still requires approved network validation in `{LIVE_SOURCE_PROOF_PATH}`.",
+        "live_resolution_proof": f"Stored closed-market snapshot resolution exists; live proof URL ingestion still needs approved public endpoint validation in `{LIVE_SOURCE_PROOF_PATH}`.",
         "postgres_apply_proof": f"Run `python3 -m sports_edge.cli migrate` with an approved database URL and save sanitized proof to `{POSTGRES_PROOF_PATH}`.",
         "deployed_cron_proof": f"Run scheduled jobs, sanitize the evidence, and write `{PRODUCTION_CRON_PROOF_PATH}` with `python3 -m sports_edge.cli production-cron-proof --evidence-in <sanitized-cron-evidence.json>`.",
         "deployed_dashboard_proof": "Deploy and verify public Vercel dashboard/API endpoints.",
@@ -326,6 +337,41 @@ def _production_cron_proof_valid(proof: dict[str, Any]) -> bool:
         and checks.get("logs_contain_credentials") is False
         and checks.get("dashboard_reflects_run") is True
         and checks.get("wallet_or_order_execution_enabled") is False
+    )
+
+
+def _live_source_proof_valid(proof: dict[str, Any], *, require_resolution: bool) -> bool:
+    checks = proof.get("checks", {}) if isinstance(proof.get("checks"), dict) else {}
+    categories = proof.get("categories", {}) if isinstance(proof.get("categories"), dict) else {}
+    run = proof.get("run", {}) if isinstance(proof.get("run"), dict) else {}
+    required_categories = {"macroeconomics", "politics", "stocks_trade"}
+    category_rows_ok = all(
+        isinstance(categories.get(category), dict)
+        and categories[category].get("observed") is True
+        and categories[category].get("sourceCount", 0) >= 1
+        for category in required_categories
+    )
+    base_ok = (
+        bool(proof)
+        and proof.get("proof_id", "").startswith("live_source_validation_")
+        and proof.get("researchOnly") is True
+        and proof.get("paperTradingOnly") is True
+        and run.get("sourceMode") == "live"
+        and category_rows_ok
+        and checks.get("read_only_public_sources") is True
+        and checks.get("tos_review_completed") is True
+        and checks.get("parser_verified_numeric_observations") is True
+        and checks.get("source_health_only_not_decision_evidence") is True
+        and checks.get("rules_resolution_captured") is True
+        and checks.get("wallet_or_order_execution_enabled") is False
+        and checks.get("logs_contain_credentials") is False
+    )
+    if not require_resolution:
+        return base_ok
+    return (
+        base_ok
+        and checks.get("live_resolution_proof_validated") is True
+        and checks.get("resolved_outcome_public_proof_url_captured") is True
     )
 
 
