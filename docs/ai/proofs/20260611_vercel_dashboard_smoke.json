@@ -1,9 +1,9 @@
 {
   "proof_id": "vercel_dashboard_smoke_20260611",
-  "as_of": "2026-06-11T05:54:00Z",
+  "as_of": "2026-06-11T06:33:08Z",
   "deployment": {
-    "id": "dpl_5UTh8VmQfDbsqi3bwm4rvTzVjNfB",
-    "url": "https://polymarket-research-dashboard-gou145j06.vercel.app",
+    "id": "dpl_8gVBvoNhvFVxaUVvHWkeZ9t3h7ja",
+    "url": "https://polymarket-research-dashboard-i1uzba62a.vercel.app",
     "alias": "https://polymarket-research-dashboard.vercel.app",
     "ready_state": "READY",
     "target": "production"
