@@ -131,7 +131,7 @@ def _proof_items() -> list[dict[str, Any]]:
             "status": "approval_required",
             "whyRequired": "Scheduled GitHub Actions or worker cron must run successfully outside local dry-run mode.",
             "safeDryRunCommand": "python3 -m sports_edge.cli production-readiness",
-            "approvedCommand": "Inspect the approved GitHub Actions scheduled run logs for polymarket-15m.yml.",
+            "approvedCommand": f"python3 -m sports_edge.cli production-cron-proof --evidence-in <sanitized-cron-evidence.json> --proof-out {PRODUCTION_CRON_PROOF_PATH}",
             "proofPath": PRODUCTION_CRON_PROOF_PATH,
             "requires": ["GitHub Actions access", "durable storage secrets configured", "no secret values copied into reports"],
             "expectedEvidence": [

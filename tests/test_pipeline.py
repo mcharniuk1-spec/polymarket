@@ -16,7 +16,7 @@ from sports_edge.agents import ACTIVE_CATEGORIES, MarketDataAgent, MultiAgentPip
 from sports_edge.app import health_payload
 from sports_edge.bet_research import BetResearchPlanner
 from sports_edge.codex_queue import drain_codex_queue, enqueue_codex_review, queue_summary
-from sports_edge.cli import run_migrations
+from sports_edge.cli import run_migrations, run_production_cron_proof
 from sports_edge.dashboard_data import build_dashboard_payload, build_report_text
 from sports_edge.dashboard_api import (
     dashboard_contract_from_daily,
@@ -45,6 +45,7 @@ from sports_edge.odds_math import american_to_decimal, american_to_implied_proba
 from sports_edge.orchestrator import CollectorRunConfig, DailyRunConfig, run_collector, run_daily_analysis
 from sports_edge.outcome_evaluator import evaluate_previous_paper_bets
 from sports_edge.production_readiness import build_production_readiness
+from sports_edge.proof_capture import build_production_cron_proof, validate_production_cron_proof
 from sports_edge.reporting import PerformanceReporter
 from sports_edge.risk_control import RESEARCH_ONLY_MODE, RiskControl
 from sports_edge.safety import SafetyGateError, assert_paper_trading_only
@@ -480,6 +481,45 @@ class SourceRegistryTests(unittest.TestCase):
             self.assertTrue(payload)
 
 
+def _valid_cron_evidence() -> dict[str, object]:
+    return {
+        "asOf": "2026-06-11",
+        "run": {
+            "id": "27327476929",
+            "event": "schedule",
+            "status": "completed",
+            "conclusion": "success",
+            "workflow": "Polymarket 15m Research Cycle",
+            "url": "https://github.com/example/polymarket/actions/runs/27327476929?token=secret-token",
+        },
+        "scheduledJobs": {
+            "collector_15m": {
+                "observed": True,
+                "status": "success",
+                "sourceMode": "live",
+                "idempotencyKey": "collector:2026-06-11T06:00:00Z",
+                "runId": "collector-20260611T060000Z",
+                "scheduledFor": "2026-06-11T06:00:00Z",
+            },
+            "sofia_daily": {
+                "observed": True,
+                "status": "success",
+                "sourceMode": "live",
+                "idempotencyKey": "daily:2026-06-11",
+                "runId": "daily-2026-06-11",
+                "scheduledFor": "2026-06-11T06:00:00Z",
+            },
+        },
+        "checks": {
+            "paper_trading_only": True,
+            "durable_storage_gate_passed": True,
+            "logs_contain_credentials": False,
+            "dashboard_reflects_run": True,
+            "wallet_or_order_execution_enabled": False,
+        },
+    }
+
+
 class MilestoneOneContractTests(unittest.TestCase):
     def test_daily_orchestrator_dry_run_validates_contract_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -730,6 +770,50 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertFalse(proof_path.exists())
         self.assertEqual(payload["proof"], {"written": False, "reason": "dry_run"})
 
+    def test_production_cron_proof_builder_requires_both_scheduled_jobs(self) -> None:
+        proof = build_production_cron_proof(_valid_cron_evidence())
+        proof_text = json.dumps(proof, sort_keys=True)
+
+        self.assertEqual(validate_production_cron_proof(proof), [])
+        self.assertTrue(goal_audit_module._production_cron_proof_valid(proof))
+        self.assertTrue(proof["scheduledJobs"]["collector_15m"]["observed"])
+        self.assertTrue(proof["scheduledJobs"]["sofia_daily"]["observed"])
+        self.assertNotIn("secret-token", proof_text)
+        self.assertNotIn("?token=", proof_text)
+
+    def test_cli_production_cron_proof_dry_run_does_not_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "cron-evidence.json"
+            proof_path = Path(tmpdir) / "cron-proof.json"
+            evidence_path.write_text(json.dumps(_valid_cron_evidence()), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_production_cron_proof(str(evidence_path), str(proof_path), dry_run=True)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["written"])
+        self.assertEqual(payload["reason"], "dry_run")
+        self.assertEqual(payload["validationErrors"], [])
+
+    def test_cli_production_cron_proof_rejects_incomplete_evidence(self) -> None:
+        evidence = _valid_cron_evidence()
+        evidence["scheduledJobs"]["sofia_daily"]["observed"] = False
+        with tempfile.TemporaryDirectory() as tmpdir:
+            evidence_path = Path(tmpdir) / "cron-evidence.json"
+            proof_path = Path(tmpdir) / "cron-proof.json"
+            evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_production_cron_proof(str(evidence_path), str(proof_path), dry_run=False)
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 1)
+        self.assertFalse(proof_path.exists())
+        self.assertFalse(payload["ok"])
+        self.assertIn("sofia_daily.observed must be true", payload["validationErrors"])
+
     def test_external_proof_bundle_is_safe_and_secret_free(self) -> None:
         database_url = "postgresql://user:secret-password@localhost:5432/polymarket"
         with mock.patch.dict(os.environ, {"DATABASE_URL": database_url}, clear=False):
@@ -753,6 +837,8 @@ class MilestoneOneContractTests(unittest.TestCase):
         proof_paths = {row["id"]: row.get("proofPath") for row in payload["proofItems"]}
         self.assertEqual(proof_paths["postgres_apply_proof"], goal_audit_module.POSTGRES_PROOF_PATH)
         self.assertEqual(proof_paths["production_cron_run_proof"], goal_audit_module.PRODUCTION_CRON_PROOF_PATH)
+        approved_commands = {row["id"]: row.get("approvedCommand", "") for row in payload["proofItems"]}
+        self.assertIn("production-cron-proof", approved_commands["production_cron_run_proof"])
         self.assertTrue(all(row["status"] == "approval_required" for row in payload["proofItems"]))
 
     def test_cli_external_proof_bundle_outputs_no_secret_values(self) -> None:
@@ -1400,21 +1486,7 @@ class OutcomeEvaluationTests(unittest.TestCase):
                 self.assertTrue(all(check["passed"] for check in row["checks"]))
 
     def test_goal_audit_accepts_valid_production_cron_proof_file(self) -> None:
-        valid_cron_proof = {
-            "proof_id": "production_cron_run_20260611",
-            "run": {
-                "event": "schedule",
-                "status": "completed",
-                "conclusion": "success",
-            },
-            "checks": {
-                "source_mode_live": True,
-                "paper_trading_only": True,
-                "durable_storage_gate_passed": True,
-                "logs_contain_credentials": False,
-                "dashboard_reflects_run": True,
-            },
-        }
+        valid_cron_proof = build_production_cron_proof(_valid_cron_evidence())
         original_read_json = goal_audit_module._read_json
 
         def fake_read_json(path: str) -> dict[str, object]:

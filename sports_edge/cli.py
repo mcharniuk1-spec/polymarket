@@ -12,12 +12,13 @@ from .codex_queue import drain_codex_queue, queue_summary
 from .dashboard_data import build_dashboard_payload
 from .external_proof import build_external_proof_bundle
 from .full_scan import run_full_scan
-from .goal_audit import POSTGRES_PROOF_PATH, build_goal_audit
+from .goal_audit import POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH, build_goal_audit
 from .intelligence import run_intelligence_cycle
 from .managed_pipeline import load_correlations, load_model_state, load_run_history, run_agent_replay, run_managed_cycle, run_ml_update
 from .migrations import MILESTONE1_MIGRATION_ID, MILESTONE1_POSTGRES_SQL
 from .orchestrator import CollectorRunConfig, DailyRunConfig, run_collector, run_daily_analysis
 from .production_readiness import build_production_readiness
+from .proof_capture import load_json_file, write_production_cron_proof
 from .reporting import PerformanceReporter
 from .source_registry import SourceRegistry
 from .state_store import PostgresStateStore, configured_database_url
@@ -339,6 +340,13 @@ def run_external_proof_bundle(as_of: str | None) -> int:
     return 0 if payload.get("ok") else 1
 
 
+def run_production_cron_proof(evidence_in: str, proof_out: str, dry_run: bool) -> int:
+    evidence = load_json_file(evidence_in)
+    payload = write_production_cron_proof(evidence, proof_out=proof_out, dry_run=dry_run)
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0 if payload.get("ok") else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Polymarket research-only paper analytics MVP")
     subparsers = parser.add_subparsers(dest="command")
@@ -417,6 +425,17 @@ def main() -> int:
         help="Print the remaining external proof checklist without writing, deploying, or calling live APIs",
     )
     proof_parser.add_argument("--as-of", default=None, help="Optional ISO timestamp/date to include in the proof bundle")
+    cron_proof_parser = subparsers.add_parser(
+        "production-cron-proof",
+        help="Build sanitized production cron proof from approved evidence JSON without fetching logs",
+    )
+    cron_proof_parser.add_argument("--evidence-in", required=True, help="Path to operator-approved sanitized cron evidence JSON")
+    cron_proof_parser.add_argument(
+        "--proof-out",
+        default=PRODUCTION_CRON_PROOF_PATH,
+        help=f"Path for sanitized proof output, default {PRODUCTION_CRON_PROOF_PATH}",
+    )
+    cron_proof_parser.add_argument("--dry-run", action="store_true", help="Validate and print proof without writing it")
     args = parser.parse_args()
 
     if args.command == "run-demo":
@@ -468,6 +487,8 @@ def main() -> int:
         return run_production_readiness()
     if args.command == "external-proof-bundle":
         return run_external_proof_bundle(args.as_of)
+    if args.command == "production-cron-proof":
+        return run_production_cron_proof(args.evidence_in, args.proof_out, args.dry_run)
     parser.print_help()
     return 2
 

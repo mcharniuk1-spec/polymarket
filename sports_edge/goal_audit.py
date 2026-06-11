@@ -270,7 +270,7 @@ def _gap_for_requirement(requirement_id: str, status: str) -> str | None:
         "live_official_adapters": "Adapters are read-only and callable, but live source parsing/ToS-specific numeric extraction still requires approved network validation.",
         "live_resolution_proof": "Stored closed-market snapshot resolution exists; live proof URL ingestion still needs approved public endpoint validation.",
         "postgres_apply_proof": f"Run `python3 -m sports_edge.cli migrate` with an approved database URL and save sanitized proof to `{POSTGRES_PROOF_PATH}`.",
-        "deployed_cron_proof": "Run GitHub Actions/Vercel scheduled jobs and inspect production logs.",
+        "deployed_cron_proof": f"Run scheduled jobs, sanitize the evidence, and write `{PRODUCTION_CRON_PROOF_PATH}` with `python3 -m sports_edge.cli production-cron-proof --evidence-in <sanitized-cron-evidence.json>`.",
         "deployed_dashboard_proof": "Deploy and verify public Vercel dashboard/API endpoints.",
     }
     return gaps.get(requirement_id, "Evidence is missing or incomplete.")
@@ -301,17 +301,31 @@ def _postgres_migration_proof_valid(proof: dict[str, Any]) -> bool:
 def _production_cron_proof_valid(proof: dict[str, Any]) -> bool:
     checks = proof.get("checks", {}) if isinstance(proof.get("checks"), dict) else {}
     run = proof.get("run", {}) if isinstance(proof.get("run"), dict) else {}
+    scheduled_jobs = proof.get("scheduledJobs", {}) if isinstance(proof.get("scheduledJobs"), dict) else {}
+    collector = scheduled_jobs.get("collector_15m", {}) if isinstance(scheduled_jobs.get("collector_15m"), dict) else {}
+    daily = scheduled_jobs.get("sofia_daily", {}) if isinstance(scheduled_jobs.get("sofia_daily"), dict) else {}
     return (
         bool(proof)
         and proof.get("proof_id", "").startswith("production_cron_run_")
+        and proof.get("researchOnly") is True
+        and proof.get("paperTradingOnly") is True
         and run.get("event") in {"schedule", "vercel_cron"}
         and run.get("status") in {"completed", "success"}
         and run.get("conclusion") in {"success", None}
+        and collector.get("observed") is True
+        and collector.get("status") in {"success", "duplicate_skipped"}
+        and collector.get("sourceMode") == "live"
+        and daily.get("observed") is True
+        and daily.get("status") in {"success", "duplicate_skipped"}
+        and daily.get("sourceMode") == "live"
+        and checks.get("collector_15m_completed") is True
+        and checks.get("sofia_daily_completed") is True
         and checks.get("source_mode_live") is True
         and checks.get("paper_trading_only") is True
         and checks.get("durable_storage_gate_passed") is True
         and checks.get("logs_contain_credentials") is False
         and checks.get("dashboard_reflects_run") is True
+        and checks.get("wallet_or_order_execution_enabled") is False
     )
 
 
