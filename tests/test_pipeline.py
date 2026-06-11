@@ -705,6 +705,9 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertIn("postgres_apply_proof", proof_ids)
         self.assertIn("approved_live_source_validation", proof_ids)
         self.assertIn("vercel_dashboard_smoke_proof", proof_ids)
+        proof_paths = {row["id"]: row.get("proofPath") for row in payload["proofItems"]}
+        self.assertEqual(proof_paths["postgres_apply_proof"], goal_audit_module.POSTGRES_PROOF_PATH)
+        self.assertEqual(proof_paths["production_cron_run_proof"], goal_audit_module.PRODUCTION_CRON_PROOF_PATH)
         self.assertTrue(all(row["status"] == "approval_required" for row in payload["proofItems"]))
 
     def test_cli_external_proof_bundle_outputs_no_secret_values(self) -> None:
@@ -1380,6 +1383,43 @@ class OutcomeEvaluationTests(unittest.TestCase):
         statuses = {row["id"]: row["status"] for row in payload["requirements"]}
         self.assertEqual(statuses["deployed_cron_proof"], "proven")
         self.assertEqual(statuses["postgres_apply_proof"], "missing")
+        self.assertFalse(payload["complete"])
+        self.assertEqual(payload["summary"]["proven"], 12)
+        self.assertEqual(payload["summary"]["missing"], 1)
+
+    def test_goal_audit_accepts_valid_postgres_migration_proof_file(self) -> None:
+        valid_postgres_proof = {
+            "proof_id": "postgres_migration_20260611",
+            "researchOnly": True,
+            "paperTradingOnly": True,
+            "migration": {
+                "ok": True,
+                "applied": True,
+                "verifiedTables": list(goal_audit_module.MILESTONE_TABLES),
+                "missingTables": [],
+            },
+            "storage": {
+                "durable": True,
+            },
+            "checks": {
+                "database_url_value_exposed": False,
+                "logs_contain_credentials": False,
+                "wallet_or_order_execution_enabled": False,
+            },
+        }
+        original_read_json = goal_audit_module._read_json
+
+        def fake_read_json(path: str) -> dict[str, object]:
+            if path == goal_audit_module.POSTGRES_PROOF_PATH:
+                return valid_postgres_proof
+            return original_read_json(path)
+
+        with mock.patch("sports_edge.goal_audit._read_json", side_effect=fake_read_json):
+            payload = build_goal_audit()
+
+        statuses = {row["id"]: row["status"] for row in payload["requirements"]}
+        self.assertEqual(statuses["postgres_apply_proof"], "proven")
+        self.assertEqual(statuses["deployed_cron_proof"], "missing")
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["summary"]["proven"], 12)
         self.assertEqual(payload["summary"]["missing"], 1)

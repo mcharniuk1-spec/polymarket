@@ -10,6 +10,24 @@ from .schemas import MODEL_FAMILIES
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+POSTGRES_PROOF_PATH = "docs/ai/proofs/20260611_postgres_migration_proof.json"
+PRODUCTION_CRON_PROOF_PATH = "docs/ai/proofs/20260611_production_cron_run.json"
+
+MILESTONE_TABLES = (
+    "cron_runs",
+    "market_snapshots",
+    "order_book_snapshots",
+    "external_source_records",
+    "external_observations",
+    "context_reports",
+    "model_outputs",
+    "decision_signals",
+    "paper_bets",
+    "portfolio_snapshots",
+    "resolved_outcomes",
+    "decision_notes",
+    "knowledge_lessons",
+)
 
 
 REQUIREMENTS = [
@@ -25,8 +43,8 @@ REQUIREMENTS = [
     ("tests_validation", "Tests and local dry-runs cover contracts, collectors, models, decisions, safety, cron, dashboard shape.", ["tests/test_pipeline.py", "README.md"]),
     ("live_official_adapters", "Read-only live official external adapters are implemented and source/ToS reviewed.", ["sports_edge/external_adapters.py"]),
     ("live_resolution_proof", "Live resolved-outcome proof ingestion exists.", ["sports_edge/outcome_evaluator.py"]),
-    ("postgres_apply_proof", "Postgres migrations have been applied and verified against a real DB.", ["sports_edge/cli.py", "sports_edge/state_store.py"]),
-    ("deployed_cron_proof", "GitHub/Vercel scheduled jobs have run successfully in production.", [".github/workflows/polymarket-15m.yml", "vercel.json", "docs/ai/proofs/20260611_production_cron_run.json"]),
+    ("postgres_apply_proof", "Postgres migrations have been applied and verified against a real DB.", ["sports_edge/cli.py", "sports_edge/state_store.py", POSTGRES_PROOF_PATH]),
+    ("deployed_cron_proof", "GitHub/Vercel scheduled jobs have run successfully in production.", [".github/workflows/polymarket-15m.yml", "vercel.json", PRODUCTION_CRON_PROOF_PATH]),
     ("deployed_dashboard_proof", "Vercel dashboard/API is deployed and externally verified.", ["vercel.json", "web/app.js", "docs/ai/proofs/20260611_vercel_dashboard_smoke.json"]),
 ]
 
@@ -152,23 +170,8 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
     if requirement_id == "storage_schemas":
         migrations = _read_text("sports_edge/migrations.py")
         schemas = _read_text("sports_edge/schemas.py")
-        required_tables = (
-            "cron_runs",
-            "market_snapshots",
-            "order_book_snapshots",
-            "external_source_records",
-            "external_observations",
-            "context_reports",
-            "model_outputs",
-            "decision_signals",
-            "paper_bets",
-            "portfolio_snapshots",
-            "resolved_outcomes",
-            "decision_notes",
-            "knowledge_lessons",
-        )
         return [
-            _check("migration_tables_present", all(table in migrations for table in required_tables), {"tableCount": len(required_tables)}),
+            _check("migration_tables_present", all(table in migrations for table in MILESTONE_TABLES), {"tableCount": len(MILESTONE_TABLES)}),
             _check("schema_validate_methods_present", schemas.count("def validate") >= 10),
             _check("cron_run_statuses_validated", "duplicate_skipped" in schemas and "dry_run" in schemas),
         ]
@@ -209,18 +212,23 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
             _check("external_proof_required", True, {"proofItem": "approved_live_source_validation"}),
         ]
     if requirement_id == "postgres_apply_proof":
+        proof = _read_json(POSTGRES_PROOF_PATH)
         return [
             _check("migration_apply_path_exists", "apply_schema_migration" in _read_text("sports_edge/state_store.py")),
-            _check("external_proof_required", False, {"proofItem": "postgres_apply_proof", "command": "python3 -m sports_edge.cli migrate"}),
+            _check(
+                "postgres_migration_proof",
+                _postgres_migration_proof_valid(proof),
+                {"proofItem": "postgres_apply_proof", "proofPath": POSTGRES_PROOF_PATH, "command": "python3 -m sports_edge.cli migrate"},
+            ),
         ]
     if requirement_id == "deployed_cron_proof":
-        proof = _read_json("docs/ai/proofs/20260611_production_cron_run.json")
+        proof = _read_json(PRODUCTION_CRON_PROOF_PATH)
         return [
             _check("local_workflow_ready", readiness_status.get("collector_15m_live") == "pass" and readiness_status.get("daily_live_readonly") == "pass"),
             _check(
                 "production_cron_run_proof",
                 _production_cron_proof_valid(proof),
-                {"proofItem": "production_cron_run_proof", "proofPath": "docs/ai/proofs/20260611_production_cron_run.json"},
+                {"proofItem": "production_cron_run_proof", "proofPath": PRODUCTION_CRON_PROOF_PATH},
             ),
         ]
     if requirement_id == "deployed_dashboard_proof":
@@ -261,11 +269,33 @@ def _gap_for_requirement(requirement_id: str, status: str) -> str | None:
     gaps = {
         "live_official_adapters": "Adapters are read-only and callable, but live source parsing/ToS-specific numeric extraction still requires approved network validation.",
         "live_resolution_proof": "Stored closed-market snapshot resolution exists; live proof URL ingestion still needs approved public endpoint validation.",
-        "postgres_apply_proof": "Run `python3 -m sports_edge.cli migrate` with an approved database URL and verify durable writes.",
+        "postgres_apply_proof": f"Run `python3 -m sports_edge.cli migrate` with an approved database URL and save sanitized proof to `{POSTGRES_PROOF_PATH}`.",
         "deployed_cron_proof": "Run GitHub Actions/Vercel scheduled jobs and inspect production logs.",
         "deployed_dashboard_proof": "Deploy and verify public Vercel dashboard/API endpoints.",
     }
     return gaps.get(requirement_id, "Evidence is missing or incomplete.")
+
+
+def _postgres_migration_proof_valid(proof: dict[str, Any]) -> bool:
+    checks = proof.get("checks", {}) if isinstance(proof.get("checks"), dict) else {}
+    migration = proof.get("migration", {}) if isinstance(proof.get("migration"), dict) else {}
+    storage = proof.get("storage", {}) if isinstance(proof.get("storage"), dict) else {}
+    verified_tables = set(migration.get("verifiedTables", []) or storage.get("verifiedTables", []))
+    missing_tables = migration.get("missingTables", storage.get("missingTables", []))
+    return (
+        bool(proof)
+        and proof.get("proof_id", "").startswith("postgres_migration_")
+        and proof.get("researchOnly") is True
+        and proof.get("paperTradingOnly") is True
+        and migration.get("ok") is True
+        and migration.get("applied") is True
+        and storage.get("durable") is True
+        and missing_tables == []
+        and set(MILESTONE_TABLES).issubset(verified_tables)
+        and checks.get("database_url_value_exposed") is False
+        and checks.get("logs_contain_credentials") is False
+        and checks.get("wallet_or_order_execution_enabled") is False
+    )
 
 
 def _production_cron_proof_valid(proof: dict[str, Any]) -> bool:

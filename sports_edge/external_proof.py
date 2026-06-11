@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .goal_audit import build_goal_audit
+from .goal_audit import POSTGRES_PROOF_PATH, PRODUCTION_CRON_PROOF_PATH
 from .production_readiness import build_production_readiness
 from .state_store import configured_database_url
 
@@ -57,6 +58,7 @@ def _proof_items() -> list[dict[str, Any]]:
             "whyRequired": "The migration SQL must be applied and verified against the real durable Postgres database.",
             "safeDryRunCommand": "python3 -m sports_edge.cli migrate --dry-run",
             "approvedCommand": "python3 -m sports_edge.cli migrate",
+            "proofPath": POSTGRES_PROOF_PATH,
             "requires": ["approved DATABASE_URL or POSTGRES_URL", "operator approval for durable schema writes"],
             "expectedEvidence": [
                 "ok=true",
@@ -64,7 +66,9 @@ def _proof_items() -> list[dict[str, Any]]:
                 "storage.durable=true",
                 "missingTables=[]",
                 "verifiedTables includes all 13 milestone tables",
+                "researchOnly=true and paperTradingOnly=true",
                 "no database URL or secret value appears in logs",
+                "wallet_or_order_execution_enabled=false",
             ],
             "writesDurableState": True,
             "callsNetwork": True,
@@ -128,6 +132,7 @@ def _proof_items() -> list[dict[str, Any]]:
             "whyRequired": "Scheduled GitHub Actions or worker cron must run successfully outside local dry-run mode.",
             "safeDryRunCommand": "python3 -m sports_edge.cli production-readiness",
             "approvedCommand": "Inspect the approved GitHub Actions scheduled run logs for polymarket-15m.yml.",
+            "proofPath": PRODUCTION_CRON_PROOF_PATH,
             "requires": ["GitHub Actions access", "durable storage secrets configured", "no secret values copied into reports"],
             "expectedEvidence": [
                 "15-minute collector job completed with sourceMode=live",
