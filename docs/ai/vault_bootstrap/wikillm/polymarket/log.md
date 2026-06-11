@@ -15,4 +15,4 @@
 - 2026-06-11: Public GitHub Actions API showed the latest pushed workflow runs failed in the managed-cycle step. Updated the workflow so scheduled jobs still fail closed without durable storage, while push/manual runs prove the contract with a fixture dry-run.
 - 2026-06-11: Post-fix public GitHub Actions push run `27326320766` on commit `3b92b18` succeeded, including managed-cycle validation and Vercel dashboard smoke. Scheduled production-run proof still requires a real scheduled invocation with durable storage.
 - 2026-06-11: Ran `external-proof-bundle --as-of 2026-06-10` and added a stricter production cron proof gate. The goal audit remains incomplete until approved Postgres durable proof and a real scheduled production cron proof are captured without exposing secrets.
-- 2026-06-11: Deployed production dashboard `dpl_636stXJvjg3DTN5dFhuBY5KZtfoV`, refreshed Vercel smoke proof, and verified public health/dashboard/run endpoints plus unauthenticated cron denial.
+- 2026-06-11: Deployed production dashboard `dpl_5UTh8VmQfDbsqi3bwm4rvTzVjNfB`, refreshed Vercel smoke proof, and verified public health/dashboard/run endpoints plus unauthenticated cron denial.

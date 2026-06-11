@@ -8,7 +8,7 @@ Continue the Polymarket analytical paper-trading goal by checking post-fix sched
 - `python3 -m sports_edge.cli goal-audit` still reports `complete=false`, with 11 proven, 2 partial, and 2 missing requirement groups.
 - Public GitHub Actions API showed push runs on the fixed workflow are successful, but no post-fix scheduled event had appeared by `2026-06-11T05:49:50Z`; the latest public scheduled Actions run was still an old failure on commit `b96fb77`.
 - Public Vercel smoke checks returned HTTP 200 for `/api/health`, `/api/dashboard-contract`, `/api/runs/latest`, and `/api/run-history`, with paper-only safety flags present.
-- Production deployment `dpl_636stXJvjg3DTN5dFhuBY5KZtfoV` completed, was aliased to `https://polymarket-research-dashboard.vercel.app`, and replaced the previous Vercel dashboard smoke proof deployment reference.
+- Production deployment `dpl_5UTh8VmQfDbsqi3bwm4rvTzVjNfB` completed, was aliased to `https://polymarket-research-dashboard.vercel.app`, and replaced the previous Vercel dashboard smoke proof deployment reference.
 - Vercel logs showed recent health/dashboard smoke traffic and unauthenticated cron 401 checks, but no authenticated scheduled daily cron invocation yet.
 - The audit now looks for `docs/ai/proofs/20260611_production_cron_run.json` before marking `deployed_cron_proof` proven.
 - A push-only GitHub Actions success is not sufficient for scheduled production proof.
