@@ -57,7 +57,7 @@ def _proof_items() -> list[dict[str, Any]]:
             "status": "approval_required",
             "whyRequired": "The migration SQL must be applied and verified against the real durable Postgres database.",
             "safeDryRunCommand": "python3 -m sports_edge.cli migrate --dry-run",
-            "approvedCommand": "python3 -m sports_edge.cli migrate",
+            "approvedCommand": f"python3 -m sports_edge.cli migrate --proof-out {POSTGRES_PROOF_PATH}",
             "proofPath": POSTGRES_PROOF_PATH,
             "requires": ["approved DATABASE_URL or POSTGRES_URL", "operator approval for durable schema writes"],
             "expectedEvidence": [

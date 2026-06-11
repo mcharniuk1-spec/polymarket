@@ -246,10 +246,10 @@ Postgres migration dry-run is safe without credentials. Actual migration applica
 
 ```bash
 python3 -m sports_edge.cli migrate --dry-run
-python3 -m sports_edge.cli migrate
+python3 -m sports_edge.cli migrate --proof-out docs/ai/proofs/20260611_postgres_migration_proof.json
 ```
 
-After an approved real migration, save only sanitized proof metadata to `docs/ai/proofs/20260611_postgres_migration_proof.json`. The goal audit accepts it only when it proves `researchOnly=true`, `paperTradingOnly=true`, `migration.ok=true`, `migration.applied=true`, durable storage, all 13 milestone tables verified, `missingTables=[]`, no credential values in logs, and no wallet/order execution enabled.
+After an approved real migration, `--proof-out` saves only sanitized proof metadata to `docs/ai/proofs/20260611_postgres_migration_proof.json`. The goal audit accepts it only when it proves `researchOnly=true`, `paperTradingOnly=true`, `migration.ok=true`, `migration.applied=true`, durable storage, all 13 milestone tables verified, `missingTables=[]`, no credential values in logs, and no wallet/order execution enabled.
 
 ## Verification
 

@@ -685,6 +685,51 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertIn("cron_runs", kwargs["required_tables"])
         self.assertIn("knowledge_lessons", kwargs["required_tables"])
 
+    def test_cli_migration_apply_can_write_sanitized_postgres_proof(self) -> None:
+        database_url = "postgresql://user:secret-password@localhost:5432/polymarket"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            proof_path = Path(tmpdir) / "postgres-proof.json"
+            with mock.patch.dict(os.environ, {"DATABASE_URL": database_url}, clear=False):
+                with mock.patch("sports_edge.cli.PostgresStateStore") as store_class:
+                    store_class.return_value.apply_schema_migration.return_value = {
+                        "ok": True,
+                        "migrationId": MILESTONE1_MIGRATION_ID,
+                        "checksum": "test-checksum",
+                        "storageMode": "postgres",
+                        "durable": True,
+                        "applied": True,
+                        "verifiedTables": list(goal_audit_module.MILESTONE_TABLES),
+                        "missingTables": [],
+                    }
+                    buffer = io.StringIO()
+                    with contextlib.redirect_stdout(buffer):
+                        exit_code = run_migrations(dry_run=False, proof_out=str(proof_path))
+
+            output = buffer.getvalue()
+            payload = json.loads(output)
+            proof = json.loads(proof_path.read_text(encoding="utf-8"))
+            proof_text = json.dumps(proof, sort_keys=True)
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(payload["proof"]["written"])
+        self.assertTrue(goal_audit_module._postgres_migration_proof_valid(proof))
+        self.assertNotIn(database_url, output)
+        self.assertNotIn("secret-password", output)
+        self.assertNotIn(database_url, proof_text)
+        self.assertNotIn("secret-password", proof_text)
+
+    def test_cli_migration_dry_run_with_proof_out_does_not_write_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            proof_path = Path(tmpdir) / "postgres-proof.json"
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                exit_code = run_migrations(dry_run=True, proof_out=str(proof_path))
+            payload = json.loads(buffer.getvalue())
+
+        self.assertEqual(exit_code, 0)
+        self.assertFalse(proof_path.exists())
+        self.assertEqual(payload["proof"], {"written": False, "reason": "dry_run"})
+
     def test_external_proof_bundle_is_safe_and_secret_free(self) -> None:
         database_url = "postgresql://user:secret-password@localhost:5432/polymarket"
         with mock.patch.dict(os.environ, {"DATABASE_URL": database_url}, clear=False):

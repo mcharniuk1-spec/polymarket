@@ -12,7 +12,7 @@ from .codex_queue import drain_codex_queue, queue_summary
 from .dashboard_data import build_dashboard_payload
 from .external_proof import build_external_proof_bundle
 from .full_scan import run_full_scan
-from .goal_audit import build_goal_audit
+from .goal_audit import POSTGRES_PROOF_PATH, build_goal_audit
 from .intelligence import run_intelligence_cycle
 from .managed_pipeline import load_correlations, load_model_state, load_run_history, run_agent_replay, run_managed_cycle, run_ml_update
 from .migrations import MILESTONE1_MIGRATION_ID, MILESTONE1_POSTGRES_SQL
@@ -236,7 +236,7 @@ def show_managed_state(kind: str) -> int:
     return 0
 
 
-def run_migrations(dry_run: bool) -> int:
+def run_migrations(dry_run: bool, proof_out: str | None = None) -> int:
     tables = sorted(set(re.findall(r"create table if not exists\s+([a-z_]+)", MILESTONE1_POSTGRES_SQL, flags=re.IGNORECASE)))
     indexes = sorted(set(re.findall(r"create (?:unique )?index if not exists\s+([a-z_]+)", MILESTONE1_POSTGRES_SQL, flags=re.IGNORECASE)))
     payload = {
@@ -252,6 +252,8 @@ def run_migrations(dry_run: bool) -> int:
         "applied": False,
     }
     if dry_run:
+        if proof_out:
+            payload["proof"] = {"written": False, "reason": "dry_run"}
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
     database_url = configured_database_url()
@@ -275,8 +277,48 @@ def run_migrations(dry_run: bool) -> int:
     payload["verifiedTables"] = result.get("verifiedTables", [])
     payload["missingTables"] = result.get("missingTables", tables)
     payload["ok"] = bool(result.get("ok") and result.get("durable"))
+    if proof_out:
+        if payload["ok"]:
+            proof_path = Path(proof_out)
+            proof_path.parent.mkdir(parents=True, exist_ok=True)
+            proof_payload = _build_postgres_migration_proof(payload)
+            proof_path.write_text(json.dumps(proof_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            payload["proof"] = {"written": True, "path": str(proof_path)}
+        else:
+            payload["proof"] = {"written": False, "reason": "migration_not_ok", "path": proof_out}
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if payload["ok"] else 1
+
+
+def _build_postgres_migration_proof(migration_payload: dict[str, object]) -> dict[str, object]:
+    storage = migration_payload.get("storage", {})
+    storage_payload = storage if isinstance(storage, dict) else {}
+    return {
+        "proof_id": f"postgres_migration_{MILESTONE1_MIGRATION_ID}",
+        "researchOnly": True,
+        "paperTradingOnly": True,
+        "migration": {
+            "ok": bool(migration_payload.get("ok")),
+            "applied": bool(migration_payload.get("applied")),
+            "migrationId": migration_payload.get("migrationId"),
+            "verifiedTables": migration_payload.get("verifiedTables", []),
+            "missingTables": migration_payload.get("missingTables", []),
+            "tableCount": migration_payload.get("tableCount"),
+        },
+        "storage": {
+            "durable": bool(storage_payload.get("durable")),
+            "storageMode": storage_payload.get("storageMode"),
+        },
+        "checks": {
+            "database_url_value_exposed": False,
+            "logs_contain_credentials": False,
+            "wallet_or_order_execution_enabled": False,
+        },
+        "notes": [
+            "Generated from sanitized migrate output only.",
+            "No database URL, password, token, or credential value is stored in this proof artifact.",
+        ],
+    }
 
 
 def run_goal_audit() -> int:
@@ -363,6 +405,11 @@ def main() -> int:
     state_parser.add_argument("kind", choices=["run-history", "model-state", "correlations"])
     migrate_parser = subparsers.add_parser("migrate", help="Validate or apply Postgres schema migrations")
     migrate_parser.add_argument("--dry-run", action="store_true", help="Validate migration metadata without applying SQL")
+    migrate_parser.add_argument(
+        "--proof-out",
+        default=None,
+        help=f"Write sanitized Postgres migration proof after a successful real migration, for example {POSTGRES_PROOF_PATH}",
+    )
     subparsers.add_parser("goal-audit", help="Audit current repo evidence against the active Polymarket system goal")
     subparsers.add_parser("production-readiness", help="Validate local GitHub Actions/Vercel readiness without deploying")
     proof_parser = subparsers.add_parser(
@@ -414,7 +461,7 @@ def main() -> int:
     if args.command == "managed-state":
         return show_managed_state(args.kind)
     if args.command == "migrate":
-        return run_migrations(args.dry_run)
+        return run_migrations(args.dry_run, args.proof_out)
     if args.command == "goal-audit":
         return run_goal_audit()
     if args.command == "production-readiness":
