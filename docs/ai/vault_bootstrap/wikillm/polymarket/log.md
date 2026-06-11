@@ -18,3 +18,4 @@
 - 2026-06-11: Deployed production dashboard `dpl_5UTh8VmQfDbsqi3bwm4rvTzVjNfB`, refreshed Vercel smoke proof, and verified public health/dashboard/run endpoints plus unauthenticated cron denial.
 - 2026-06-11: Added strict Postgres migration proof gating through `docs/ai/proofs/20260611_postgres_migration_proof.json`, updated the external proof bundle with proof paths, and kept `goal-audit` incomplete until real approved durable DB and scheduled cron evidence exists.
 - 2026-06-11: Added `migrate --proof-out` so approved real Postgres migrations can emit sanitized proof automatically. Dry-run with proof output remains non-writing, and no live trading or secret capture path was added.
+- 2026-06-11: Redeployed the Vercel production dashboard/API as `dpl_FgJp9cAwu9TGAorsJyhLxEAUhGjD`; cron function routes are present, but scheduled production cron proof remains missing until a real scheduled durable run is captured.
