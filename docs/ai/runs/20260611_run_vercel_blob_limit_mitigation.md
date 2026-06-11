@@ -55,8 +55,22 @@ INTERPRETATION: The Polymarket deployment can remain available without consuming
 
 GAP: This does not unpause or reset the Vercel Blob store. Only Vercel billing/usage reset, upgrade, or approved remote Blob cleanup can change the account-level Blob pause state.
 
+## Deployment Proof
+
+FACT: Commit `faf2342` was pushed to `origin/main`.
+
+FACT: Vercel production deployment `dpl_5YQnud8KHFkgC2q46KpkyXcYo8sm` completed successfully and was aliased to `https://polymarket-research-dashboard.vercel.app`.
+
+FACT: Production upload size was approximately `219.1KB` after excluding generated artifacts.
+
+FACT: Production `/api/health` returned `blob_storage_enabled=false`, `durable_storage_configured=false`, `cron_secret_configured=true`, and `ok=true`.
+
+FACT: Production `/api/dashboard-contract` returned HTTP 200.
+
+FACT: Unauthenticated production `/api/cron-daily` returned HTTP 401, preserving the cron safety gate.
+
+FACT: `https://siberia-site.vercel.app/` and `https://archflow-phi-jade.vercel.app/` returned HTTP 200 after the Polymarket deploy.
+
 ## Next Steps
 
-- Deploy the mitigation to production.
-- Smoke-check Polymarket, Siberia Site, and Archflow after deployment.
 - Add a Postgres production store before re-enabling scheduled durable writes.
