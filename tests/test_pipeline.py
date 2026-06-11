@@ -32,6 +32,7 @@ from sports_edge.data_agent import DataAgent, infer_market_category, normalize_g
 from sports_edge.decision_agent import DecisionAgent, PortfolioRules
 from sports_edge.external_adapters import collect_external_adapter_bundle
 from sports_edge.external_proof import build_external_proof_bundle
+import sports_edge.goal_audit as goal_audit_module
 from sports_edge.full_scan import run_full_scan
 from sports_edge.goal_audit import build_goal_audit
 from sports_edge.full_scan import _normalize_category as normalize_full_scan_category
@@ -1349,6 +1350,39 @@ class OutcomeEvaluationTests(unittest.TestCase):
             self.assertTrue(row["checks"])
             if row["status"] == "proven":
                 self.assertTrue(all(check["passed"] for check in row["checks"]))
+
+    def test_goal_audit_accepts_valid_production_cron_proof_file(self) -> None:
+        valid_cron_proof = {
+            "proof_id": "production_cron_run_20260611",
+            "run": {
+                "event": "schedule",
+                "status": "completed",
+                "conclusion": "success",
+            },
+            "checks": {
+                "source_mode_live": True,
+                "paper_trading_only": True,
+                "durable_storage_gate_passed": True,
+                "logs_contain_credentials": False,
+                "dashboard_reflects_run": True,
+            },
+        }
+        original_read_json = goal_audit_module._read_json
+
+        def fake_read_json(path: str) -> dict[str, object]:
+            if path == "docs/ai/proofs/20260611_production_cron_run.json":
+                return valid_cron_proof
+            return original_read_json(path)
+
+        with mock.patch("sports_edge.goal_audit._read_json", side_effect=fake_read_json):
+            payload = build_goal_audit()
+
+        statuses = {row["id"]: row["status"] for row in payload["requirements"]}
+        self.assertEqual(statuses["deployed_cron_proof"], "proven")
+        self.assertEqual(statuses["postgres_apply_proof"], "missing")
+        self.assertFalse(payload["complete"])
+        self.assertEqual(payload["summary"]["proven"], 12)
+        self.assertEqual(payload["summary"]["missing"], 1)
 
 
 def _previous_daily_paper_bet_payload() -> dict[str, object]:

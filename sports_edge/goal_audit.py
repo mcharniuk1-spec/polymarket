@@ -26,7 +26,7 @@ REQUIREMENTS = [
     ("live_official_adapters", "Read-only live official external adapters are implemented and source/ToS reviewed.", ["sports_edge/external_adapters.py"]),
     ("live_resolution_proof", "Live resolved-outcome proof ingestion exists.", ["sports_edge/outcome_evaluator.py"]),
     ("postgres_apply_proof", "Postgres migrations have been applied and verified against a real DB.", ["sports_edge/cli.py", "sports_edge/state_store.py"]),
-    ("deployed_cron_proof", "GitHub/Vercel scheduled jobs have run successfully in production.", [".github/workflows/polymarket-15m.yml", "vercel.json"]),
+    ("deployed_cron_proof", "GitHub/Vercel scheduled jobs have run successfully in production.", [".github/workflows/polymarket-15m.yml", "vercel.json", "docs/ai/proofs/20260611_production_cron_run.json"]),
     ("deployed_dashboard_proof", "Vercel dashboard/API is deployed and externally verified.", ["vercel.json", "web/app.js", "docs/ai/proofs/20260611_vercel_dashboard_smoke.json"]),
 ]
 
@@ -73,8 +73,10 @@ def _path_evidence(path: str) -> dict[str, Any]:
 
 
 def _status_for_requirement(requirement_id: str, evidence: list[dict[str, Any]], checks: list[dict[str, Any]]) -> str:
-    if requirement_id in {"postgres_apply_proof", "deployed_cron_proof"}:
-        return "missing"
+    if requirement_id == "postgres_apply_proof":
+        return "proven" if all(row.get("passed") for row in checks) else "missing"
+    if requirement_id == "deployed_cron_proof":
+        return "proven" if all(row.get("passed") for row in checks) else "missing"
     if requirement_id in {"live_official_adapters", "live_resolution_proof"}:
         return "partial"
     file_evidence_ok = all(row["exists"] and row["size"] > 0 for row in evidence)
@@ -212,9 +214,14 @@ def _requirement_checks(requirement_id: str, readiness_status: dict[str, str]) -
             _check("external_proof_required", False, {"proofItem": "postgres_apply_proof", "command": "python3 -m sports_edge.cli migrate"}),
         ]
     if requirement_id == "deployed_cron_proof":
+        proof = _read_json("docs/ai/proofs/20260611_production_cron_run.json")
         return [
             _check("local_workflow_ready", readiness_status.get("collector_15m_live") == "pass" and readiness_status.get("daily_live_readonly") == "pass"),
-            _check("external_proof_required", False, {"proofItem": "production_cron_run_proof"}),
+            _check(
+                "production_cron_run_proof",
+                _production_cron_proof_valid(proof),
+                {"proofItem": "production_cron_run_proof", "proofPath": "docs/ai/proofs/20260611_production_cron_run.json"},
+            ),
         ]
     if requirement_id == "deployed_dashboard_proof":
         proof = _read_json("docs/ai/proofs/20260611_vercel_dashboard_smoke.json")
@@ -259,6 +266,23 @@ def _gap_for_requirement(requirement_id: str, status: str) -> str | None:
         "deployed_dashboard_proof": "Deploy and verify public Vercel dashboard/API endpoints.",
     }
     return gaps.get(requirement_id, "Evidence is missing or incomplete.")
+
+
+def _production_cron_proof_valid(proof: dict[str, Any]) -> bool:
+    checks = proof.get("checks", {}) if isinstance(proof.get("checks"), dict) else {}
+    run = proof.get("run", {}) if isinstance(proof.get("run"), dict) else {}
+    return (
+        bool(proof)
+        and proof.get("proof_id", "").startswith("production_cron_run_")
+        and run.get("event") in {"schedule", "vercel_cron"}
+        and run.get("status") in {"completed", "success"}
+        and run.get("conclusion") in {"success", None}
+        and checks.get("source_mode_live") is True
+        and checks.get("paper_trading_only") is True
+        and checks.get("durable_storage_gate_passed") is True
+        and checks.get("logs_contain_credentials") is False
+        and checks.get("dashboard_reflects_run") is True
+    )
 
 
 def _read_text(path: str) -> str:
