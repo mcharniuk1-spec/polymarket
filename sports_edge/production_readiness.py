@@ -41,6 +41,7 @@ def build_production_readiness() -> dict[str, Any]:
         _check_sofia_daily_windows(workflow),
         _check_daily_live_readonly(workflow),
         _check_durable_storage_gate(workflow),
+        _check_non_scheduled_dry_run_fallback(workflow),
         _check_vercel_config(vercel),
         _check_vercel_crons(vercel),
         _check_vercel_hobby_function_budget(),
@@ -117,6 +118,20 @@ def _check_durable_storage_gate(workflow: str) -> dict[str, Any]:
         "Workflow fails closed when no durable storage secret is configured.",
         {"requiredEnvNames": required},
         "Keep scheduled writes behind durable storage configuration.",
+    )
+
+
+def _check_non_scheduled_dry_run_fallback(workflow: str) -> dict[str, Any]:
+    return _check(
+        "non_scheduled_dry_run_fallback",
+        'EVENT_NAME: ${{ github.event_name }}' in workflow
+        and 'if [ "${EVENT_NAME}" = "schedule" ]; then' in workflow
+        and "Missing durable storage secret; running non-scheduled fixture dry-run proof." in workflow
+        and "run-daily --source fixture --target-count 30 --dry-run" in workflow
+        and '"status": "non_scheduled_fixture_dry_run"' in workflow,
+        "Push/manual workflow runs prove the contract with a fixture dry-run when durable storage is absent.",
+        {"command": "run-daily --source fixture --target-count 30 --dry-run", "scheduledWritesStillFailClosed": True},
+        "Allow non-scheduled CI to run a fixture dry-run while keeping scheduled writes behind durable storage.",
     )
 
 

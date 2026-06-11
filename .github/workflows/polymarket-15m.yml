@@ -62,12 +62,18 @@ jobs:
           POLYMARKET_STATE_PREFIX: ${{ vars.POLYMARKET_STATE_PREFIX || 'polymarket/state' }}
           TARGET_COUNT: ${{ github.event.inputs.target_count || '80' }}
           GLOBAL_REVIEW_INPUT: ${{ github.event.inputs.global_review || 'false' }}
+          EVENT_NAME: ${{ github.event_name }}
           SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
           if [ -z "${DATABASE_URL:-}${POSTGRES_URL:-}${POSTGRES_PRISMA_URL:-}${POSTGRES_URL_NON_POOLING:-}${BLOB_READ_WRITE_TOKEN:-}" ]; then
-            echo "Missing durable storage secret. Configure DATABASE_URL/POSTGRES_URL or BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
-            exit 1
+            if [ "${EVENT_NAME}" = "schedule" ]; then
+              echo "Missing durable storage secret. Configure DATABASE_URL/POSTGRES_URL or BLOB_READ_WRITE_TOKEN in GitHub Actions secrets."
+              exit 1
+            fi
+            echo "Missing durable storage secret; running non-scheduled fixture dry-run proof."
+            python3 -m sports_edge.cli run-daily --source fixture --target-count 30 --dry-run | tee response.json
+            exit 0
           fi
 
           if [ "${SCHEDULE}" = "0 6 * * *" ] || [ "${SCHEDULE}" = "0 7 * * *" ]; then
@@ -95,6 +101,26 @@ jobs:
           from pathlib import Path
 
           payload = json.loads(Path("response.json").read_text())
+          if payload.get("sourceMode") == "fixture" and payload.get("storage", {}).get("reason") == "dry_run":
+              required = {
+                  "ok": True,
+                  "researchOnly": True,
+                  "paperTradingOnly": True,
+              }
+              for key, expected in required.items():
+                  actual = payload.get(key)
+                  if actual != expected:
+                      raise SystemExit(f"{key} expected {expected!r}, got {actual!r}: {payload}")
+              if payload.get("storage", {}).get("written") is not False:
+                  raise SystemExit(f"fixture dry-run unexpectedly wrote state: {payload}")
+              print(json.dumps({
+                  "status": "non_scheduled_fixture_dry_run",
+                  "sourceMode": payload.get("sourceMode"),
+                  "schemaValidation": payload.get("schemaValidation", {}),
+                  "storage": payload.get("storage", {}),
+              }, indent=2, sort_keys=True))
+              raise SystemExit(0)
+
           if payload.get("collector") is True:
               required = {
                   "ok": True,

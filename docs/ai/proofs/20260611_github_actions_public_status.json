@@ -1,0 +1,43 @@
+{
+  "proof_id": "github_actions_public_status_20260611",
+  "as_of": "2026-06-11T05:36:00Z",
+  "source": "public GitHub Actions API and Vercel CLI logs",
+  "repository": "mcharniuk1-spec/polymarket",
+  "workflow": ".github/workflows/polymarket-15m.yml",
+  "latest_observed_runs": [
+    {
+      "run_id": 27326159451,
+      "event": "push",
+      "head_sha": "8b862fc932342d1ce759613ab249efcc40326dd1",
+      "status": "completed",
+      "conclusion": "failure",
+      "failed_step": "Run managed research cycle"
+    },
+    {
+      "run_id": 27326116982,
+      "event": "push",
+      "head_sha": "989f668af9f84fec0147501acdf7192a24863b80",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "run_id": 27308707436,
+      "event": "schedule",
+      "head_sha": "b96fb77fe53121e985f316c4e0c3b8f01284c963",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "diagnosis": [
+    "The pushed workflow was reachable through the public GitHub Actions API.",
+    "The latest push run failed in the managed-cycle step before result validation.",
+    "The failure is consistent with the workflow's durable-storage gate running before event-specific branching.",
+    "Raw logs were not fetched because the unauthenticated logs endpoint returned HTTP 403."
+  ],
+  "local_fix": [
+    "Scheduled production jobs still fail closed when durable storage secrets are absent.",
+    "Push and manual runs without durable storage now execute `run-daily --source fixture --target-count 30 --dry-run` and validate that no state was written.",
+    "Production-readiness now checks the non-scheduled dry-run fallback explicitly."
+  ],
+  "remaining_gap": "This artifact does not prove a successful scheduled production job. Completion still requires a successful GitHub Actions or Vercel scheduled run log after the fix is pushed and durable storage is available."
+}

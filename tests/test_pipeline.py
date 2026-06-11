@@ -610,7 +610,10 @@ class MilestoneOneContractTests(unittest.TestCase):
         self.assertIn('cron: "0 7 * * *"', workflow)
         self.assertIn("run-collector --source live", workflow)
         self.assertIn("run-daily --source live", workflow)
-        self.assertNotIn("run-daily --source fixture", workflow)
+        self.assertIn("run-daily --source fixture --target-count 30 --dry-run", workflow)
+        self.assertIn('if [ "${EVENT_NAME}" = "schedule" ]; then', workflow)
+        self.assertIn("Missing durable storage secret. Configure DATABASE_URL/POSTGRES_URL or BLOB_READ_WRITE_TOKEN", workflow)
+        self.assertIn("non_scheduled_fixture_dry_run", workflow)
         self.assertIn("dailyRunHourEuropeSofia", workflow)
 
     def test_production_readiness_contract_validates_local_deploy_surface(self) -> None:
@@ -620,6 +623,8 @@ class MilestoneOneContractTests(unittest.TestCase):
         statuses = {row["id"]: row["status"] for row in payload["checks"]}
         self.assertEqual(statuses["collector_15m_live"], "pass")
         self.assertEqual(statuses["daily_live_readonly"], "pass")
+        self.assertEqual(statuses["durable_storage_gate"], "pass")
+        self.assertEqual(statuses["non_scheduled_dry_run_fallback"], "pass")
         self.assertEqual(statuses["vercel_crons"], "pass")
         self.assertEqual(statuses["vercel_hobby_function_budget"], "pass")
         self.assertEqual(statuses["dashboard_contract_routes"], "pass")
