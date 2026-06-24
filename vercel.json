@@ -28,16 +28,6 @@
       "excludeFiles": "{tests/**,reports/**,graphify-out/**,docs/ai/vault_bootstrap/**,reference/**,web/**,data/generated/full_scan/**,data/generated/production_state/**,data/generated/intelligence/codex_queue/**,**/__pycache__/**}"
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron-daily",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron-daily",
-      "schedule": "0 7 * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
