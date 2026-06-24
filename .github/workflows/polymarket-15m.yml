@@ -1,9 +1,6 @@
 name: Polymarket 15m Research Cycle
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       target_count:

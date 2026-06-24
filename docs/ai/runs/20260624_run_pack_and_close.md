@@ -6,9 +6,11 @@ Pause regular Polymarket project execution, stop scheduled automation surfaces, 
 ## Scheduler Shutdown
 FACT: GitHub Actions scheduled triggers were removed from `.github/workflows/polymarket-15m.yml`.
 
+FACT: The GitHub Actions push trigger was also removed, leaving only manual `workflow_dispatch`.
+
 FACT: Vercel native cron entries were removed from `vercel.json`.
 
-INTERPRETATION: After these changes are pushed/deployed, regular GitHub scheduled runs and Vercel native cron runs should stop. Manual workflow dispatch, push CI, and direct authenticated endpoint calls remain possible deliberate actions.
+INTERPRETATION: After these changes are pushed/deployed, regular GitHub scheduled runs, push-triggered CI runs, and Vercel native cron runs should stop. Manual workflow dispatch and direct authenticated endpoint calls remain possible deliberate actions.
 
 GAP: Local config edits do not by themselves change the already deployed Vercel production deployment or remote GitHub default branch. A push/deploy is required for the remote services to consume the shutdown config.
 
